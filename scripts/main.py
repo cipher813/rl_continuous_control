@@ -7,7 +7,7 @@ December 2018
 """
 # from util import train_gym, train_unity, train_envs
 from util import train_envs
-from agent import DDPG #, TD3
+from DDPG import DDPG #, TD3
 
 import os
 import re

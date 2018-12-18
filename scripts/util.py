@@ -5,7 +5,7 @@ Udacity Deep Reinforcement Learning Nanodegree
 Brian McMahon
 December 2018
 """
-from agent import DDPG
+from DDPG import DDPG
 
 import re
 import time
