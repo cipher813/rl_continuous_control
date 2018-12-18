@@ -24,7 +24,7 @@ def evaluate_policy(env, policy, eval_episodes=10):
 
 def train_agent(env_name, seed, policy_dict, start_timesteps, max_timesteps,
                 eval_freq, batch_size, discount, tau, policy_noise, noise_clip,
-                policy_freq, directory):
+                policy_freq, directory, save_models, expl_noise):
     for k,v in policy_dict.items():
         policy_name = k
         filename = f"{policy_name}-{env_name}-{str(seed)}"

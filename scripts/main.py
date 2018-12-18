@@ -32,4 +32,4 @@ policy_dict = {"TD3":TD3}
 
 train_agent(env_name, seed, policy_dict, start_timesteps, max_timesteps,
             eval_freq, batch_size, discount, tau, policy_noise, noise_clip,
-            policy_freq, directory)
+            policy_freq, directory, save_models, expl_noise)
