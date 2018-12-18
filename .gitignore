@@ -1,5 +1,8 @@
+__pycache__/
 data/
 log/
 models/
 charts/
 archive/
+.ipynb_checkpoints/
+*.pth
