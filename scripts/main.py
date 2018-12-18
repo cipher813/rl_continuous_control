@@ -30,12 +30,12 @@ e_decay=0.995
 
 rd = {}
 env_dict = {
-            # OpenAI Gym
-            "BipedalWalker-v2":["gym",300.0],
-            "Pendulum-v0":["gym",-250]
-
             # unity, for mac
            # "Reacher1.app":["unity",30.0],
+            # OpenAI Gym
+            "BipedalWalker-v2":["gym",300.0],
+            "Pendulum-v0":["gym",-250],
+            "Reacher_Linux_NoVis":["unity",30.0], # gcloud
             }
 
 agent_dict = {
