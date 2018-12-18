@@ -1,47 +1,42 @@
-"""
-Deep Q Network (DQN) main train file.
-Project 1: Navigation
-Udacity Deep Reinforcement Learning Nanodegree
-Brian McMahon
-December 2018
-"""
-# from util import train_gym, train_unity, train_envs
-from util import train_envs
-from DDPG import DDPG #, TD3
+# Inspired by implementation of Twin Delayed Deep Deterministic Policy Gradients (TD3)
+# Paper: https://arxiv.org/abs/1802.09477
 
+import numpy as np
+import torch
+import gym
 import os
-import re
-import datetime
+# from TD3 import TD3
+# from DDPG import DDPG
+# from DDPG2 import DDPG2
+# from util import make_paths, train_policy
+from util import *
 
-# path information
-PATH = "/Volumes/BC_Clutch/Dropbox/DeepRLND/rl_continuous_control/" # for mac
-# PATH = "/home/bcm822_gmail_com/rl_continuous_control/" # for google cloud
-CHART_PATH = PATH + "charts/"
-CHECKPOINT_PATH = PATH + "models/"
+PATH = "/Volumes/BC_Clutch/Dropbox/DeepRLND/rl_continuous_control/"
+DATA_PATH = PATH + "data/"
+MODEL_PATH = PATH + "models/"
+RESULT_PATH = PATH + "results/"
 
-timestamp = re.sub(r"\D","",str(datetime.datetime.now()))[:12]
+make_paths([MODEL_PATH, RESULT_PATH])
 
+env_name = "BipedalWalker-v2"
 seed = 0
-n_episodes=3000
-max_t=1000
-e_start=0.4
-e_end=0.01
-e_decay=0.995
+start_timesteps = 1e4
+eval_freq = 5e3
+max_timesteps = 1e6
+batch_size = 100
+discount = 0.99
+tau = 0.005
+expl_noise = 0.1
+policy_noise = 0.2
+noise_clip = 0.5
+policy_freq = 2
 
-rd = {}
-env_dict = {
-            # unity, for mac
-           # "Reacher1.app":["unity",30.0],
-            # OpenAI Gym
-            "BipedalWalker-v2":["gym",300.0],
-            "Pendulum-v0":["gym",-250],
-            "Reacher_Linux_NoVis":["unity",30.0], # gcloud
-            }
+policy_dict = {
+                "DDPG2":DDPG2,
+                "DDPG":DDPG,
+                "TD3":TD3
+                }
 
-agent_dict = {
-              "DDPG":DDPG,
-              # "TD3":TD3,
-             }
-
-rd = train_envs(PATH, CHART_PATH, CHECKPOINT_PATH, agent_dict, timestamp, env_dict, seed,
-                n_episodes,max_t,e_start,e_end,e_decay)
+train_policy(env_name, seed, policy_dict, start_timesteps, max_timesteps,
+            eval_freq, batch_size, discount, tau, policy_noise, noise_clip,
+            policy_freq, RESULT_PATH, expl_noise)
