@@ -25,60 +25,25 @@ def pickle_results(RESULT_PATH, env_name, result_dict, timestamp, policy_name):
         pickle.dump(result_dict, handle)
     print(f"Scores pickled at {pklpath}")
 
-def prep_gym(env_name, seed, agent):
-    env = gym.make(env_name)
-    env.seed(seed)
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-
-    state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.shape[0]
-    max_action = float(env.action_space.high[0])
-
-    policy = agent(state_dim, action_dim, max_action)
-    return env, policy
-
-def step_gym(obs, env, policy, expl_noise, episode_timesteps, total_timesteps,
-             start_timesteps):
-    if total_timesteps < start_timesteps: #10,000
-        # select action randomly
-        action = env.action_space.sample() # gym
-    else:
-        # select action according to policy
-        action = policy.select_action(np.array(obs))
-        # if expl_noise != 0:
-        action = ((action + np.random.normal(0, expl_noise, size=env.action_space.shape[0])).
-                   clip(env.action_space.low, env.action_space.high))
-    new_obs, reward, done, _ = env.step(action) # gym
-    done_bool = 0 if episode_timesteps + 1 == env._max_episode_steps else float(done) # gym
-    return action, new_obs, reward, done, done_bool
-
-def prep_unity():
-    pass
-
-def step_unity():
-    pass
-
 def evaluate_policy(env, policy, eval_episodes=100):
     """ Runs policy for X episodes and returns average reward """
     avg_reward = 0.
-    for _ in range(eval_episodes):
-        step_count = 0
-        obs = env.reset()
+    for i in range(eval_episodes):
+        state = env.reset()
         done = False
         while not done:
-            action = policy.select_action(np.array(obs))
-            obs, reward, done, _ = env.step(action)
+            action = policy.select_action(np.array(state))
+            # action = policy.select_action(torch.from_numpy(np.array(state)))
+            state, reward, done, _ = env.step(action)
             avg_reward += reward
-            step_count += 1
 
     avg_reward /= eval_episodes
-    print(f"Evaluation in {eval_episodes} episodes ({step_count} steps): {avg_reward:.2f}")
+    print(f"Evaluation in {eval_episodes} episodes ({i} steps): {avg_reward:.2f}")
     return avg_reward
 
-def train_policy(timestamp, env_name, seed, policy_dict, start_timesteps, max_timesteps,
+def train_gym(timestamp, env_name, seed, policy_dict, start_timesteps, max_timesteps,
                 eval_freq, batch_size, discount, tau, policy_noise, noise_clip,
-                policy_freq, RESULT_PATH, expl_noise, score_target, platform):
+                policy_freq, DATA_PATH, RESULT_PATH, expl_noise, score_target, platform):
     start = time.time()
     result_dict = {}
     for k,v in policy_dict.items():
@@ -86,11 +51,16 @@ def train_policy(timestamp, env_name, seed, policy_dict, start_timesteps, max_ti
         filename = f"{env_name}_{timestamp}_{policy_name}_{str(seed)}"
         print(f"**Running {filename}**")
 
-        if platform=="gym":
-            env, policy = prep_gym(env_name, seed, v)
-        else:
-            pass # TODO add unity
+        env = gym.make(env_name)
+        env.seed(seed)
+        torch.manual_seed(seed)
+        np.random.seed(seed)
 
+        state_dim = env.observation_space.shape[0]
+        action_dim = env.action_space.shape[0]
+        max_action = float(env.action_space.high[0])
+
+        policy = v(state_dim, action_dim, max_action)
         scores = []
         replay_buffer = ReplayBuffer()
         evaluations = [evaluate_policy(env, policy)]
@@ -119,22 +89,29 @@ def train_policy(timestamp, env_name, seed, policy_dict, start_timesteps, max_ti
                     policy.save(filename, directory=RESULT_PATH)
                     np.save(RESULT_PATH + filename,evaluations)
 
-                obs = env.reset() if platform=="gym" else 0 # TODO update per unity
+                state = env.reset()
                 done = False
                 episode_reward = 0
                 episode_timesteps = 0
                 episode_num +=1
 
-            if platform=="gym":
-                action, new_obs, reward, done, done_bool = step_gym(obs, env, policy, expl_noise, episode_timesteps, total_timesteps,start_timesteps)
+            if total_timesteps < start_timesteps: #10,000
+                # select action randomly
+                action = env.action_space.sample() # gym
             else:
-                pass # TODO add unity
+                # select action according to policy
+                action = policy.select_action(np.array(state))
+                # if expl_noise != 0:
+                action = ((action + np.random.normal(0, expl_noise, size=env.action_space.shape[0])).
+                           clip(env.action_space.low, env.action_space.high))
+            next_state, reward, done, _ = env.step(action) # gym
+            done_bool = 0 if episode_timesteps + 1 == env._max_episode_steps else float(done) # gym
             episode_reward += reward
             scores.append([reward])
 
             # store data in replay buffer
-            replay_buffer.add((obs, new_obs, action, reward, done_bool))
-            obs = new_obs
+            replay_buffer.add((state, next_state, action, reward, done_bool))
+            state = next_state
 
             episode_timesteps += 1
             total_timesteps += 1
@@ -154,7 +131,101 @@ def train_policy(timestamp, env_name, seed, policy_dict, start_timesteps, max_ti
     pickle_results(RESULT_PATH, env_name, result_dict, timestamp, policy_name)
     return result_dict
 
-def train_envs(RESULT_PATH, MODEL_PATH, policy_dict, timestamp, env_dict, seed,
+def train_unity(timestamp, env_name, seed, policy_dict, start_timesteps, max_timesteps,
+                eval_freq, batch_size, discount, tau, policy_noise, noise_clip,
+                policy_freq, DATA_PATH, RESULT_PATH, expl_noise, score_target, platform):
+    from unityagents import UnityEnvironment
+    start = time.time()
+    result_dict = {}
+
+    for k,v in policy_dict.items():
+        policy_name = k
+        filename = f"{env_name}_{timestamp}_{policy_name}_{str(seed)}"
+        print(f"**Running {filename}**")
+
+        file_name = DATA_PATH + env_name
+        print(f"Opening agent from {file_name}")
+        env = UnityEnvironment(file_name=file_name)
+        brain_name = env.brain_names[0]
+        brain = env.brains[brain_name]
+        env_info = env.reset(train_mode=True)[brain_name]
+
+        num_agents = len(env_info.agents)
+        print(f"Number of agents: {num_agents}")
+
+        # env.seed(seed)
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+
+        state_dim = env_info.vector_observations.shape[1]
+        action_dim = brain.vector_action_space_size
+        print(f"Dims, State: {state_dim} Action: {action_dim}")
+        max_action = float(action_dim)
+        print(f"Max Action: {max_action}")
+        policy = v(state_dim, action_dim, max_action)
+        scores = []
+        replay_buffer = ReplayBuffer()
+        evaluations = [evaluate_policy(env, policy)]
+
+        total_timesteps = 0
+        timesteps_since_eval = 0
+        episode_num = 0
+        done = True
+
+        while total_timesteps < max_timesteps: # less than 1 million timesteps
+
+            # take average reward of last 100 episodes
+            avg_score = np.mean(scores[-100:]) if len(scores)>100 else np.mean(scores) if len(scores)>0 else 0
+
+            # if average score is greater than score target, break while loop
+            if avg_score>=score_target:
+                break
+            if done: # only executes if done is True
+                if total_timesteps !=0:
+                    print((f"E: {episode_num} R: {episode_reward:.1f} Step, Ep: {episode_timesteps} Tot: {total_timesteps}"))
+                    policy.train(replay_buffer, episode_timesteps, batch_size, discount, tau, policy_noise, noise_clip, policy_freq)
+                if timesteps_since_eval > eval_freq: # 5000
+                    timesteps_since_eval %= eval_freq
+                    evaluations.append(evaluate_policy(env, policy))
+
+                    policy.save(filename, directory=RESULT_PATH)
+                    np.save(RESULT_PATH + filename,evaluations)
+
+            state = env_info.vector_observations[0]
+            action = policy.act(state)
+            env_info = env.step(action)[brain_name]        # send the action to the environment
+            next_state = env_info.vector_observations[0]
+            reward = env_info.rewards[0]                   # get the reward
+            done = env_info.local_done[0]
+            agent.step(state, action, reward, next_state, done)
+
+            episode_reward += reward
+            scores.append([reward])
+
+            # store data in replay buffer
+            replay_buffer.add((state, next_state, action, reward, done))
+            # state = new_obs
+            state = next_state
+
+            episode_timesteps += 1
+            total_timesteps += 1
+            timesteps_since_eval += 1
+
+        # final evaluation
+        evaluations.append(evaluate_policy(env, policy))
+        policy.save(filename,directory=RESULT_PATH)
+        np.save(RESULT_PATH + filename,evaluations)
+        print(f"Model saved as {filename}")
+        end = time.time()
+        result_dict[policy_name] = {
+                        "scores":scores,
+                        "evaluations": evaluations,
+                        "clocktime":round((end-start)/60,2)
+                        }
+    pickle_results(RESULT_PATH, env_name, result_dict, timestamp, policy_name)
+    return result_dict
+
+def train_envs(DATA_PATH, RESULT_PATH, MODEL_PATH, policy_dict, timestamp, env_dict, seed,
                start_timesteps, max_timesteps,eval_freq, batch_size, discount,
                tau, policy_noise, noise_clip,policy_freq, expl_noise):
     """Main train function for all envs in env_dict."""
@@ -163,12 +234,15 @@ def train_envs(RESULT_PATH, MODEL_PATH, policy_dict, timestamp, env_dict, seed,
         start = time.time()
         env_name = k
         platform = v[0]
-        # print(f"Begin training {env_name}-{platform}.")
         score_target = v[1]
-        # print(f"Environment: {env_name}\tAgent: {platform}")
-        results = train_policy(timestamp, env_name, seed, policy_dict, start_timesteps, max_timesteps,
-                               eval_freq, batch_size, discount, tau, policy_noise, noise_clip,
-                               policy_freq, RESULT_PATH, expl_noise, score_target, platform)
+        if platform=="gym":
+            results = train_gym(timestamp, env_name, seed, policy_dict, start_timesteps, max_timesteps,
+                                   eval_freq, batch_size, discount, tau, policy_noise, noise_clip,
+                                   policy_freq, DATA_PATH, RESULT_PATH, expl_noise, score_target, platform)
+        else:
+            results = train_unity(timestamp, env_name, seed, policy_dict, start_timesteps, max_timesteps,
+                                  eval_freq, batch_size, discount, tau, policy_noise, noise_clip,
+                                  policy_freq, DATA_PATH, RESULT_PATH, expl_noise, score_target, platform)
         rd[env_name] = results
         end = time.time()
         print(f"Finished training {env_name}-{platform} in {(end-start)/60:.2f} minutes.")
