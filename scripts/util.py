@@ -7,9 +7,6 @@ import time
 import torch
 import numpy as np
 
-# from TD3 import *
-# from DDPG import *
-# from DDPG2 import *
 from agents.TD3 import *
 from agents.DDPG import *
 from agents.DDPG2 import *
@@ -27,7 +24,7 @@ def pickle_results(RESULT_PATH, result_dict, timestamp, policy_name):
         pickle.dump(result_dict, handle)
     print(f"Scores pickled at {pklpath}")
 
-def evaluate_policy(env, policy, eval_episodes=10):
+def evaluate_policy(env, policy, eval_episodes=100):
     avg_reward = 0.
     for _ in range(eval_episodes):
         obs = env.reset()
@@ -43,7 +40,7 @@ def evaluate_policy(env, policy, eval_episodes=10):
 
 def train_policy(timestamp, env_name, seed, policy_dict, start_timesteps, max_timesteps,
                 eval_freq, batch_size, discount, tau, policy_noise, noise_clip,
-                policy_freq, RESULT_PATH, expl_noise):
+                policy_freq, RESULT_PATH, expl_noise, score_target):
     start = time.time()
     result_dict = {}
     for k,v in policy_dict.items():
@@ -69,7 +66,10 @@ def train_policy(timestamp, env_name, seed, policy_dict, start_timesteps, max_ti
         episode_num = 0
         done = True
 
-        while total_timesteps < max_timesteps: # 1 million
+        while total_timesteps < max_timesteps:
+            avg_score = np.mean(scores[-100:]) if len(scores)>100 else np.mean(scores) if len(scores)>0 else 0
+            if avg_score>=score_target:
+                break
             if done: # only executes if done is True
                 if total_timesteps !=0:
                     print((f"E: {episode_num} R: {episode_reward:.2f} Step, Ep: {episode_timesteps} Tot: {total_timesteps}"))
@@ -85,8 +85,6 @@ def train_policy(timestamp, env_name, seed, policy_dict, start_timesteps, max_ti
                 done = False
                 episode_reward = 0
                 episode_timesteps = 0
-                if episode_num >0:
-                    scores.append([reward])
                 episode_num +=1
 
             if total_timesteps < start_timesteps: #10,000
@@ -100,6 +98,7 @@ def train_policy(timestamp, env_name, seed, policy_dict, start_timesteps, max_ti
             new_obs, reward, done, _ = env.step(action)
             done_bool = 0 if episode_timesteps + 1 == env._max_episode_steps else float(done)
             episode_reward += reward
+            scores.append([reward])
 
             replay_buffer.add((obs, new_obs, action, reward, done_bool))
             obs = new_obs
@@ -135,7 +134,7 @@ def train_envs(RESULT_PATH, MODEL_PATH, policy_dict, timestamp, env_dict, seed,
         print(f"Module: {env_name}-{platform}")
         results = train_policy(timestamp, env_name, seed, policy_dict, start_timesteps, max_timesteps,
                                eval_freq, batch_size, discount, tau, policy_noise, noise_clip,
-                               policy_freq, RESULT_PATH, expl_noise)
+                               policy_freq, RESULT_PATH, expl_noise, score_target)
         rd[env_name] = results
         end = time.time()
         print(f"Finished training {env_name}-{platform} in {(end-start)/60:.2f} minutes.")
