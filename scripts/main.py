@@ -10,8 +10,8 @@ import torch
 
 from util import *
 
-PATH = "/Volumes/BC_Clutch/Dropbox/DeepRLND/rl_continuous_control/"
-# PATH = "/home/bcm822_gmail_com/rl_continuous_control/"
+# PATH = "/Volumes/BC_Clutch/Dropbox/DeepRLND/rl_continuous_control/"
+PATH = "/home/bcm822_gmail_com/rl_continuous_control/"
 DATA_PATH = PATH + "data/"
 MODEL_PATH = PATH + "models/"
 RESULT_PATH = PATH + "results/"

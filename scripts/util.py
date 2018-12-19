@@ -5,6 +5,7 @@ import os
 import gym
 import time
 import torch
+import pickle
 import numpy as np
 
 from agents.TD3 import *
@@ -27,15 +28,17 @@ def pickle_results(RESULT_PATH, env_name, result_dict, timestamp, policy_name):
 def evaluate_policy(env, policy, eval_episodes=100):
     avg_reward = 0.
     for _ in range(eval_episodes):
+        count = 0
         obs = env.reset()
         done = False
         while not done:
             action = policy.select_action(np.array(obs))
             obs, reward, done, _ = env.step(action)
             avg_reward += reward
+            count += 1
 
     avg_reward /= eval_episodes
-    print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.2f}")
+    print(f"Evaluation in {count}/{eval_episodes} episodes: {avg_reward:.2f}")
     return avg_reward
 
 def train_policy(timestamp, env_name, seed, policy_dict, start_timesteps, max_timesteps,
