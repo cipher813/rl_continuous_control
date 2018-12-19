@@ -5,4 +5,3 @@ models/
 charts/
 archive/
 .ipynb_checkpoints/
-*.pth
