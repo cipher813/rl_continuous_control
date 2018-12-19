@@ -18,8 +18,8 @@ def make_paths(paths):
             os.makedirs(path)
             print(f"Creating folder at {path}")
 
-def pickle_results(RESULT_PATH, result_dict, timestamp, policy_name):
-    pklpath = RESULT_PATH + f"{timestamp}-ResultDict-{agent_name}.pkl"
+def pickle_results(RESULT_PATH, env_name, result_dict, timestamp, policy_name):
+    pklpath = RESULT_PATH + f"{env_name}_{timestamp}_ResultDict_{policy_name}.pkl"
     with open(pklpath, 'wb') as handle:
         pickle.dump(result_dict, handle)
     print(f"Scores pickled at {pklpath}")
@@ -45,7 +45,7 @@ def train_policy(timestamp, env_name, seed, policy_dict, start_timesteps, max_ti
     result_dict = {}
     for k,v in policy_dict.items():
         policy_name = k
-        filename = f"{policy_name}-{env_name}-{str(seed)}"
+        filename = f"{env_name}_{timestamp}_{policy_name}_{str(seed)}"
         print(f"**Running {filename}**")
         env = gym.make(env_name)
         env.seed(seed)
@@ -117,7 +117,7 @@ def train_policy(timestamp, env_name, seed, policy_dict, start_timesteps, max_ti
                         "evaluations": evaluations,
                         "clocktime":round((end-start)/60,2)
                         }
-    pickle_results(RESULT_PATH, result_dict, timestamp, policy_name)
+    pickle_results(RESULT_PATH, env_name, result_dict, timestamp, policy_name)
     return result_dict
 
 def train_envs(RESULT_PATH, MODEL_PATH, policy_dict, timestamp, env_dict, seed,
