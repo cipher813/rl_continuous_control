@@ -3,7 +3,6 @@ data/
 log/
 models/
 charts/
-results/
 archive/
 .ipynb_checkpoints/
 *.pth

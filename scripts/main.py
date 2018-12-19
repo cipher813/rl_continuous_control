@@ -11,7 +11,8 @@ import os
 # from util import make_paths, train_policy
 from util import *
 
-PATH = "/Volumes/BC_Clutch/Dropbox/DeepRLND/rl_continuous_control/"
+#PATH = "/Volumes/BC_Clutch/Dropbox/DeepRLND/rl_continuous_control/"
+PATH = "/home/bcm822_gmail_com/rl_continuous_control/"
 DATA_PATH = PATH + "data/"
 MODEL_PATH = PATH + "models/"
 RESULT_PATH = PATH + "results/"
@@ -32,9 +33,9 @@ noise_clip = 0.5
 policy_freq = 2
 
 policy_dict = {
+                "TD3":TD3,
                 "DDPG2":DDPG2,
-                "DDPG":DDPG,
-                "TD3":TD3
+                "DDPG":DDPG
                 }
 
 train_policy(env_name, seed, policy_dict, start_timesteps, max_timesteps,
