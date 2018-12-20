@@ -18,7 +18,7 @@ WEIGHT_DECAY = 0.01     # L2 weight decay
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-class DDPG:
+class TD3:
     """Interacts with and learns from the environment."""
 
     def __init__(self, state_size, action_size, max_action, random_seed):
@@ -46,6 +46,8 @@ class DDPG:
         self.critic_target.load_state_dict(self.critic.state_dict())
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)
 
+        self.max_action = max_action
+
         # Noise process
         self.noise = OUNoise(action_size, random_seed)
 
@@ -62,7 +64,7 @@ class DDPG:
             experiences = self.memory.sample()
             self.train(experiences, GAMMA)
 
-    def select_action(self, state, add_noise=True): # act 
+    def select_action(self, state, add_noise=True): # act
         """Returns actions for given state as per current policy."""
         state = torch.FloatTensor(state.reshape(1, -1)).to(device)
         return self.actor(state).cpu().data.numpy().flatten()
@@ -78,7 +80,9 @@ class DDPG:
     def reset(self):
         self.noise.reset()
 
-    def train(self, experiences, gamma): # learn
+    # def train(self, experiences, gamma): # learn
+    def train(self, replay_buffer, iterations, batch_size=100, gamma=0.99,
+              tau=0.005, policy_noise=0.2, noise_clip=0.5, policy_freq=2):
         """Update policy and value parameters using given batch of experience tuples.
         Q_targets = r + γ * critic_target(next_state, actor_target(next_state))
         where:
@@ -89,36 +93,63 @@ class DDPG:
             experiences (Tuple[torch.Tensor]): tuple of (s, a, r, s', done) tuples
             gamma (float): discount factor
         """
-        states, actions, rewards, next_states, dones = experiences
+        # states, actions, rewards, next_states, dones = experiences
+        for it in range(iterations):
+            # sample replay buffer
+            x, y, u, r, d = replay_buffer.sample(batch_size)
+            state = torch.FloatTensor(x).to(device)
+            action = torch.FloatTensor(u).to(device)
+            next_state = torch.FloatTensor(y).to(device)
+            done = torch.FloatTensor(1-d).to(device)
+            reward = torch.FloatTensor(r).to(device)
 
-        # ---------------------------- update critic ---------------------------- #
-        # Get predicted next-state actions and Q values from target models
-        actions_next = self.actor_target(next_states)
-        Q_targets_next = self.critic_target(next_states, actions_next) # target_Q
-        # Compute Q targets for current states (y_i)
-        Q_targets = rewards + (gamma * Q_targets_next * (1 - dones)) # target_Q
-        # Compute critic loss
-        Q_expected = self.critic(states, actions) # current_Q
-        critic_loss = F.mse_loss(Q_expected, Q_targets)
-        # Minimize the loss
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
-        self.critic_optimizer.step()
+            # select action according to policy, add clipped noise
+            noise = torch.FloatTensor(u).data.normal_(0,policy_noise).to(device)
+            noise = noise.clamp(-noise_clip, noise_clip)
+            next_action = (self.actor_target(next_state) + noise).clamp(-self.max_action, self.max_action)
 
-        # ---------------------------- update actor ---------------------------- #
-        # Compute actor loss
-        actions_pred = self.actor(states)
-        actor_loss = -self.critic(states, actions_pred).mean()
-        # Minimize the loss
-        self.actor_optimizer.zero_grad()
-        actor_loss.backward()
-        self.actor_optimizer.step()
+            # compute target Q value
+            target_Q1, target_Q2 = self.critic_target(next_state, next_action)
+            target_Q = torch.min(target_Q1, target_Q2)
+            target_Q = reward + (done * gamma * target_Q).detach()
 
-        # ----------------------- update target networks ----------------------- #
-        self.soft_update(self.critic, self.critic_target, TAU)
-        self.soft_update(self.actor, self.actor_target, TAU)
+            # get current Q estimates
+            current_Q1, current_Q2 = self.critic(state, action)
 
-    def soft_update(self, local_model, target_model, tau):
+            # compute critic loss
+            critic_loss = F.mse_loss(current_Q1, target_Q) + F.mse_loss(current_Q2, target_Q)
+
+            # ---------------------------- update critic ---------------------------- #
+            # Get predicted next-state actions and Q values from target models
+            # actions_next = self.actor_target(next_states)
+            # Q_targets_next = self.critic_target(next_states, actions_next) # target_Q
+            # Compute Q targets for current states (y_i)
+            # Q_targets = rewards + (gamma * Q_targets_next * (1 - dones)) # target_Q
+            # Compute critic loss
+            # Q_expected = self.critic(states, actions) # current_Q
+            # critic_loss = F.mse_loss(Q_expected, Q_targets)
+            # Minimize the loss
+            self.critic_optimizer.zero_grad()
+            critic_loss.backward()
+            self.critic_optimizer.step()
+
+            # delay policy updates
+            if it % policy_freq == 0:
+
+                # ---------------------------- update actor ---------------------------- #
+                # Compute actor loss
+                # actions_pred = self.actor(states)
+                actor_loss = -self.critic(state, self.actor(state)).mean()
+                # Minimize the loss / optimize actor
+                self.actor_optimizer.zero_grad()
+                actor_loss.backward()
+                self.actor_optimizer.step()
+
+                # ----------------------- update target networks ----------------------- #
+                self.soft_update(self.critic, self.critic_target)
+                self.soft_update(self.actor, self.actor_target)
+
+    def soft_update(self, local_model, target_model, tau=0.005):
         """Soft update model parameters.
         θ_target = τ*θ_local + (1 - τ)*θ_target
         Params
@@ -239,7 +270,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """Critic (Value) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1_units=400, fc2_units=400, fc3_units=300):
+    def __init__(self, state_size, action_size, seed, fc1_units=400, fc2_units=300):
         """Initialize parameters and build model.
         Params
         ======
@@ -250,23 +281,48 @@ class Critic(nn.Module):
             fc2_units (int): Number of nodes in the second hidden layer
         """
         super(Critic, self).__init__()
-        self.seed = torch.manual_seed(seed)
-        self.fc1 = nn.Linear(state_size, fc1_units)
-        self.fc2 = nn.Linear(fc1_units+action_size, fc2_units)
-        self.fc3 = nn.Linear(fc2_units, fc3_units)
-        self.fc4 = nn.Linear(fc3_units, 1)
-        self.reset_parameters()
 
-    def reset_parameters(self):
-        self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
-        self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
-        self.fc3.weight.data.uniform_(*hidden_init(self.fc3))
-        self.fc4.weight.data.uniform_(-3e-3, 3e-3)
+        # Q1 architecture
+        self.seed = torch.manual_seed(seed)
+        self.fc1 = nn.Linear(state_size+action_size, fc1_units)
+        self.fc2 = nn.Linear(fc1_units, fc2_units)
+        self.fc3 = nn.Linear(fc2_units, 1)
+
+        # Q2 architecture
+        self.seed = torch.manual_seed(seed)
+        self.fc4 = nn.Linear(state_size+action_size, fc1_units)
+        self.fc5 = nn.Linear(fc1_units, fc2_units)
+        self.fc6 = nn.Linear(fc2_units, 1)
+    #     self.reset_parameters()
+    #
+    # def reset_parameters(self):
+    #     self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
+    #     self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
+    #     self.fc3.weight.data.uniform_(*hidden_init(self.fc3))
+    #     self.fc4.weight.data.uniform_(-3e-3, 3e-3)
 
     def forward(self, state, action):
         """Build a critic (value) network that maps (state, action) pairs -> Q-values."""
-        xs = F.leaky_relu(self.fc1(state))
-        x = torch.cat((xs, action), dim=1)
-        x = F.leaky_relu(self.fc2(x))
-        x = F.leaky_relu(self.fc3(x))
-        return self.fc4(x)
+        xu = torch.cat([state, action],1)
+
+        x1 = F.relu(self.fc1(xu))
+        x1 = F.relu(self.fc2(x1))
+        x1 = self.fc3(x1)
+
+        x2 = F.relu(self.fc4(xu))
+        x2 = F.relu(self.fc5(x2))
+        x2 = self.fc6(x2)
+        return x1, x2
+
+        # xs = F.leaky_relu(self.fc1(state))
+        # x = torch.cat((xs, action), dim=1)
+        # x = F.leaky_relu(self.fc2(x))
+        # x = F.leaky_relu(self.fc3(x))
+        # return self.fc4(x)
+
+    def Q1(self, state, action):
+        xu = torch.cat([state, action],1)
+        x1 = F.relu(self.fc1(xu))
+        x1 = F.relu(self.fc2(x1))
+        x1 = self.fc3(x1)
+        return x1
