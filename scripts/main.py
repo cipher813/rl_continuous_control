@@ -1,53 +1,48 @@
-# Inspired by implementation of Twin Delayed Deep Deterministic Policy Gradients (TD3)
-# Paper: https://arxiv.org/abs/1802.09477
-import os
-import re
 import gym
-import datetime
-import numpy as np
-
+import random
 import torch
+import numpy as np
+from collections import deque
+import matplotlib.pyplot as plt
+# %matplotlib inline
 
-from util import *
+from agents.DDPG import DDPG
 
-PATH = "/Volumes/BC_Clutch/Dropbox/DeepRLND/rl_continuous_control/"
-# PATH = "/home/bcm822_gmail_com/rl_continuous_control/"
-DATA_PATH = PATH + "data/"
-MODEL_PATH = PATH + "models/"
-RESULT_PATH = PATH + "results/"
 
-make_paths([MODEL_PATH, RESULT_PATH])
+env = gym.make('BipedalWalker-v2')
+env.seed(10)
+agent = DDPG(state_size=env.observation_space.shape[0], action_size=env.action_space.shape[0], random_seed=10)
 
-timestamp = re.sub(r"\D","",str(datetime.datetime.now()))[:12]
+def train_policy(n_episodes=2000, max_t=700):
+    scores_deque = deque(maxlen=100)
+    scores = []
+    max_score = -np.Inf
+    for i_episode in range(1, n_episodes+1):
+        state = env.reset()
+        agent.reset()
+        score = 0
+        for t in range(max_t):
+            action = agent.act(state)
+            next_state, reward, done, _ = env.step(action)
+            agent.step(state, action, reward, next_state, done)
+            state = next_state
+            score += reward
+            if done:
+                break
+        scores_deque.append(score)
+        scores.append(score)
+        print('\rEpisode {}\tAverage Score: {:.2f}\tScore: {:.2f}'.format(i_episode, np.mean(scores_deque), score), end="")
+        if i_episode % 100 == 0:
+            torch.save(agent.actor_local.state_dict(), 'checkpoint_actor.pth')
+            torch.save(agent.critic_local.state_dict(), 'checkpoint_critic.pth')
+            print('\rEpisode {}\tAverage Score: {:.2f}'.format(i_episode, np.mean(scores_deque)))
+    return scores
 
-seed = 0
-start_timesteps = 1e4
-eval_freq = 5e3
-max_timesteps = 1e6
-batch_size = 100
-discount = 0.99
-tau = 0.005
-expl_noise = 0.1
-policy_noise = 0.2
-noise_clip = 0.5
-policy_freq = 2
+scores = train_policy()
 
-env_dict = {
-            "BipedalWalker-v2":["gym",300.0],
-            # "LunarLanderContinuous-v2":["gym",200.0],
-            # "Pendulum-v0":["gym",-250.0],
-            # "Reacher1.app":["unity",30.0],
-            # "Reacher20.app":["unity",30.0],
-            # "Reacher1_Linux_NoVis.app":["unity",30.0],
-            # "Reacher20_Linux_NoVis.app":["unity",30.0],
-            }
-
-policy_dict = {
-                "TD3":TD3,
-                "DDPG2":DDPG2,
-                "DDPG":DDPG
-                }
-
-rd = train_envs(DATA_PATH, RESULT_PATH, MODEL_PATH, policy_dict, timestamp, env_dict, seed,
-                start_timesteps, max_timesteps,eval_freq, batch_size, discount,
-                tau, policy_noise, noise_clip,policy_freq, expl_noise)
+fig = plt.figure()
+ax = fig.add_subplot(111)
+plt.plot(np.arange(1, len(scores)+1), scores)
+plt.ylabel('Score')
+plt.xlabel('Episode #')
+plt.show()

@@ -25,7 +25,7 @@ def pickle_results(RESULT_PATH, env_name, result_dict, timestamp, policy_name):
         pickle.dump(result_dict, handle)
     print(f"Scores pickled at {pklpath}")
 
-def evaluate_policy(env, policy, eval_episodes=100):
+def evaluate_policy_gym(env, policy, eval_episodes=100):
     """ Runs policy for X episodes and returns average reward """
     avg_reward = 0.
     for i in range(eval_episodes):
@@ -36,9 +36,36 @@ def evaluate_policy(env, policy, eval_episodes=100):
             # action = policy.select_action(torch.from_numpy(np.array(state)))
             state, reward, done, _ = env.step(action)
             avg_reward += reward
-
     avg_reward /= eval_episodes
     print(f"Evaluation in {eval_episodes} episodes ({i} steps): {avg_reward:.2f}")
+    return avg_reward
+
+def evaluate_policy_unity(env, policy, eval_episodes=10):
+    """ Runs policy for X episodes and returns average reward """
+    avg_reward = 0.
+    for i in range(eval_episodes):
+        brain_name = env.brain_names[0]
+        env_info = env.reset(train_mode=True)[brain_name]
+        num_agents = len(env_info.agents)
+        states = env_info.vector_observations
+        scores = np.zeros(num_agents)
+        while True:
+            actions = policy.select_action(np.array(states))
+            actions = np.clip(actions,-1,1)
+            env_info = env.step(actions)[brain_name]
+            next_states = env_info.vector_observations
+            rewards = env_info.rewards
+            dones = env_info.local_done
+            scores += env_info.rewards
+            states = next_states
+            # action = policy.select_action(torch.from_numpy(np.array(state)))
+            # state, reward, done, _ = env.step(action)
+            avg_reward += scores
+            if np.any(dones):
+                break
+        print(f"Total score (averaged over agents) this episode: {np.mean(scores)}")
+    avg_reward /= eval_episodes
+    # print(f"Evaluation in {eval_episodes} episodes ({str(i)} steps): {avg_reward:.2f}")
     return avg_reward
 
 def train_gym(timestamp, env_name, seed, policy_dict, start_timesteps, max_timesteps,
@@ -63,7 +90,7 @@ def train_gym(timestamp, env_name, seed, policy_dict, start_timesteps, max_times
         policy = v(state_dim, action_dim, max_action)
         scores = []
         replay_buffer = ReplayBuffer()
-        evaluations = [evaluate_policy(env, policy)]
+        evaluations = [evaluate_policy_gym(env, policy)]
 
         total_timesteps = 0
         timesteps_since_eval = 0
@@ -84,7 +111,7 @@ def train_gym(timestamp, env_name, seed, policy_dict, start_timesteps, max_times
                     policy.train(replay_buffer, episode_timesteps, batch_size, discount, tau, policy_noise, noise_clip, policy_freq)
                 if timesteps_since_eval > eval_freq: # 5000
                     timesteps_since_eval %= eval_freq
-                    evaluations.append(evaluate_policy(env, policy))
+                    evaluations.append(evaluate_policy_gym(env, policy))
 
                     policy.save(filename, directory=RESULT_PATH)
                     np.save(RESULT_PATH + filename,evaluations)
@@ -118,7 +145,7 @@ def train_gym(timestamp, env_name, seed, policy_dict, start_timesteps, max_times
             timesteps_since_eval += 1
 
         # final evaluation
-        evaluations.append(evaluate_policy(env, policy))
+        evaluations.append(evaluate_policy_gym(env, policy))
         policy.save(filename,directory=RESULT_PATH)
         np.save(RESULT_PATH + filename,evaluations)
         print(f"Model saved as {filename}")
@@ -165,7 +192,7 @@ def train_unity(timestamp, env_name, seed, policy_dict, start_timesteps, max_tim
         policy = v(state_dim, action_dim, max_action)
         scores = []
         replay_buffer = ReplayBuffer()
-        evaluations = [evaluate_policy(env, policy)]
+        evaluations = [evaluate_policy_unity(env, policy)]
 
         total_timesteps = 0
         timesteps_since_eval = 0
@@ -186,18 +213,23 @@ def train_unity(timestamp, env_name, seed, policy_dict, start_timesteps, max_tim
                     policy.train(replay_buffer, episode_timesteps, batch_size, discount, tau, policy_noise, noise_clip, policy_freq)
                 if timesteps_since_eval > eval_freq: # 5000
                     timesteps_since_eval %= eval_freq
-                    evaluations.append(evaluate_policy(env, policy))
+                    evaluations.append(evaluate_policy_unity(env, policy))
 
                     policy.save(filename, directory=RESULT_PATH)
                     np.save(RESULT_PATH + filename,evaluations)
 
+                done = False
+                episode_reward = 0
+                episode_timesteps = 0
+                episode_num +=1
+
             state = env_info.vector_observations[0]
-            action = policy.act(state)
+            action = policy.select_action(state)
             env_info = env.step(action)[brain_name]        # send the action to the environment
             next_state = env_info.vector_observations[0]
             reward = env_info.rewards[0]                   # get the reward
             done = env_info.local_done[0]
-            agent.step(state, action, reward, next_state, done)
+            # env.step(state, action, reward, next_state, done)
 
             episode_reward += reward
             scores.append([reward])
@@ -212,7 +244,7 @@ def train_unity(timestamp, env_name, seed, policy_dict, start_timesteps, max_tim
             timesteps_since_eval += 1
 
         # final evaluation
-        evaluations.append(evaluate_policy(env, policy))
+        evaluations.append(evaluate_policy_unity(env, policy))
         policy.save(filename,directory=RESULT_PATH)
         np.save(RESULT_PATH + filename,evaluations)
         print(f"Model saved as {filename}")
