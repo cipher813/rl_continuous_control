@@ -34,7 +34,7 @@ def pickle_results(RESULT_PATH, env_name, timestamp,pkl_file):
         pickle.dump(pkl_file, handle)
     print(f"Scores pickled at {pklpath}")
 
-def train_policy(env_name, agent_dict, n_episodes=2000, max_t=700):
+def train_policy(env_name, agent_dict, n_episodes=10000, max_t=700):
     result_dict = {}
     env = gym.make(env_name)
     env.seed(10)
