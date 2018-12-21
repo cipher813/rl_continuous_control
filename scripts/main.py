@@ -2,6 +2,7 @@ import re
 import gym
 import time
 import torch
+import pickle 
 import random
 import datetime
 import numpy as np
@@ -12,7 +13,8 @@ import matplotlib.pyplot as plt
 from agents.DDPG import DDPG
 from agents.TD3 import TD3
 
-PATH = "/Volumes/BC_Clutch/Dropbox/DeepRLND/rl_continuous_control/"
+#PATH = "/Volumes/BC_Clutch/Dropbox/DeepRLND/rl_continuous_control/"
+PATH = "/home/cipher813/rl_continuous_control/"
 RESULT_PATH = PATH + "results/"
 
 timestamp = re.sub(r"\D","",str(datetime.datetime.now()))[:12]
