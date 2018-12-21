@@ -278,7 +278,7 @@ def train_envs(DATA_PATH, RESULT_PATH, MODEL_PATH, policy_dict, timestamp, env_d
         rd[env_name] = results
         end = time.time()
         print(f"Finished training {env_name}-{platform} in {(end-start)/60:.2f} minutes.")
-    pklpath = CHART_PATH + f"{timestamp}-ResultDict-All.pkl"
+    pklpath = RESULT_PATH + f"{timestamp}-ResultDict-All.pkl"
     with open(pklpath, 'wb') as handle:
         pickle.dump(rd, handle)
         print(f"Scores pickled at {pklpath}")
