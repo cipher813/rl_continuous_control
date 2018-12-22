@@ -34,7 +34,7 @@ def pickle_results(RESULT_PATH, env_name, timestamp,pkl_file):
         pickle.dump(pkl_file, handle)
     print(f"Scores pickled at {pklpath}")
 
-def train_policy(env_name, agent_dict, n_episodes=10000, max_t=700):
+def train_policy(env_name, agent_dict, n_episodes=20000, max_t=700, score_threshold=300.0):
     result_dict = {}
     env = gym.make(env_name)
     env.seed(10)
@@ -67,7 +67,9 @@ def train_policy(env_name, agent_dict, n_episodes=10000, max_t=700):
                 torch.save(agent.actor.state_dict(), RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_actor.pth')
                 torch.save(agent.critic.state_dict(), RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_critic.pth')
                 print(f'\rEpisode {i_episode}\tAverage Score: {np.mean(scores_deque):.2f}\tRuntime: {(end-start)/60:.1f}')
-        result_dict[k] = scores
+            if np.average(scores_deque)>score_threshold:
+                break
+        result_dict[k] = scores 
     pickle_results(RESULT_PATH, env_name, timestamp, result_dict)
     return scores
 
@@ -76,4 +78,4 @@ agent_dict = {
               # "TD3":TD3,
              }
 
-scores = train_policy('BipedalWalker-v2',agent_dict)
+scores = train_policy('BipedalWalker-v2',agent_dict, score_threshold=300.0)
