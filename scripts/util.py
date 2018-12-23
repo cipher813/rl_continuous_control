@@ -21,24 +21,39 @@ def pickle_results(RESULT_PATH, env_name, timestamp,pkl_file):
         pickle.dump(pkl_file, handle)
     print(f"Scores pickled at {pklpath}")
 
-def prep_gym(env_name):
+def prep_gym(env_name, random_seed):
     env = gym.make(env_name)
-    env.seed(10)
-    return env
+    env.seed(random_seed)
+    state_size = env.observation_space.shape[0]
+    action_size = env.action_space.shape[0]
+    max_action = float(env.action_space.high[0])
+    return env, state_size, action_size, max_action
 
-def policy_gym(policy_class):
-    policy = policy_class(state_size=env.observation_space.shape[0],
-              action_size=env.action_space.shape[0],
-              max_action=float(env.action_space.high[0]),
-              random_seed=10)
-    return policy
-
-def step_gym(action):
+def step_gym(env, action):
     next_state, reward, done, _ = env.step(action)
     return next_state, reward, done
 
+def prep_unity(DATA_PATH):
+    env = UnityEnvironment(file_name=DATA_PATH)
+    brain_name = env.brain_names[0]
+    brain = env.brains[brain_name]
+    env_info = env.reset()[brain_name]
+    state_size = len(env_info.vector_observations[0])
+    action_size = brain.vector_action_space_size
+    max_action = float(action_size)
+    return env, env_info, brain_name, brain, state_size, action_size, max_action
+
+def step_unity(env, action):
+    state = env_info.vector_observations[0]
+    action = agent.act(state,e)
+    env_info = env.step(action)[brain_name]        # send the action to the environment
+    next_state = env_info.vector_observations[0]
+    reward = env_info.rewards[0]                   # get the reward
+    done = env_info.local_done[0]
+    return next_state, reward, done # state, action, env_info
+
 def train_policy(RESULT_PATH, env_name, agent_dict, n_episodes=20000, max_t=700,
-                 learn_every=20, num_learn=10, score_threshold=300.0):
+                 learn_every=20, num_learn=10, score_threshold=300.0, random_seed=10):
     """Run policy train.
 
     Arguments:
@@ -53,16 +68,10 @@ def train_policy(RESULT_PATH, env_name, agent_dict, n_episodes=20000, max_t=700,
     timestamp = re.sub(r"\D","",str(datetime.datetime.now()))[:12]
     start = time.time()
     result_dict = {}
-    env = prep_gym(env_name) # gym
-    # env = gym.make(env_name)
-    # env.seed(10)
+    env, state_size, action_size, max_action = prep_gym(env_name, random_seed) # gym
     for k,v in agent_dict.items():
         policy_name = k
-        # policy = v(state_size=env.observation_space.shape[0],
-        #           action_size=env.action_space.shape[0],
-        #           max_action=float(env.action_space.high[0]),
-        #           random_seed=10)
-        policy = policy_gym(v) # gym
+        policy = v(state_size,action_size,max_action, random_seed)
         scores_deque = deque(maxlen=100)
         scores = []
         max_score = -np.Inf
@@ -73,7 +82,7 @@ def train_policy(RESULT_PATH, env_name, agent_dict, n_episodes=20000, max_t=700,
             for t in range(max_t):
                 action = policy.act(state)
                 # next_state, reward, done, _ = env.step(action)
-                next_state, reward, done = step_gym(action) # gym
+                next_state, reward, done = step_gym(env, action) # gym
                 policy.step(state, action, reward, next_state, done)
                 score += reward
                 state = next_state

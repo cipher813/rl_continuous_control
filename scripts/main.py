@@ -13,6 +13,7 @@
 
 from agents.DDPG import DDPG
 from agents.TD3 import TD3
+from util import train_policy
 
 PATH = "/Volumes/BC_Clutch/Dropbox/DeepRLND/rl_continuous_control/"
 # PATH = "/home/cipher813/rl_continuous_control/"
