@@ -61,9 +61,9 @@ class DDPG:
     def start_learn(self):
         if len(self.memory) > BATCH_SIZE:
             experiences = self.memory.sample()
-            self.train(experiences, GAMMA)
+            self.learn(experiences, GAMMA)
 
-    def select_action(self, state, add_noise=True): # act
+    def act(self, state, add_noise=True): # act
         """Returns actions for given state as per current policy."""
         state = torch.FloatTensor(state.reshape(1, -1)).to(device)
         return self.actor(state).cpu().data.numpy().flatten()
@@ -79,7 +79,7 @@ class DDPG:
     def reset(self):
         self.noise.reset()
 
-    def train(self, experiences, gamma): # learn
+    def learn(self, experiences, gamma): # train
         """Update policy and value parameters using given batch of experience tuples.
         Q_targets = r + γ * critic_target(next_state, actor_target(next_state))
         where:
