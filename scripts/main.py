@@ -2,7 +2,7 @@ import re
 import gym
 import time
 import torch
-import pickle 
+import pickle
 import random
 import datetime
 import numpy as np
@@ -39,7 +39,7 @@ def train_policy(env_name, agent_dict, n_episodes=20000, max_t=700, score_thresh
     env = gym.make(env_name)
     env.seed(10)
     for k,v in agent_dict.items():
-        agent = v(state_size=env.observation_space.shape[0],
+        policy = v(state_size=env.observation_space.shape[0],
                   action_size=env.action_space.shape[0],
                   max_action=float(env.action_space.high[0]),
                   random_seed=10)
@@ -49,12 +49,12 @@ def train_policy(env_name, agent_dict, n_episodes=20000, max_t=700, score_thresh
         max_score = -np.Inf
         for i_episode in range(1, n_episodes+1):
             state = env.reset()
-            agent.reset()
+            policy.reset()
             score = 0
             for t in range(max_t):
-                action = agent.select_action(state)
+                action = policy.select_action(state)
                 next_state, reward, done, _ = env.step(action)
-                agent.step(state, action, reward, next_state, done)
+                policy.step(state, action, reward, next_state, done)
                 state = next_state
                 score += reward
                 if done:
@@ -64,12 +64,12 @@ def train_policy(env_name, agent_dict, n_episodes=20000, max_t=700, score_thresh
             end = time.time()
             print(f'\rEpisode {i_episode}\tAverage Score: {np.mean(scores_deque):.2f}\tScore: {score:.2f}\tRuntime: {(end-start)/60:.1f}',end="")
             if i_episode % 100 == 0:
-                torch.save(agent.actor.state_dict(), RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_actor.pth')
-                torch.save(agent.critic.state_dict(), RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_critic.pth')
+                torch.save(policy.actor.state_dict(), RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_actor.pth')
+                torch.save(policy.critic.state_dict(), RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_critic.pth')
                 print(f'\rEpisode {i_episode}\tAverage Score: {np.mean(scores_deque):.2f}\tRuntime: {(end-start)/60:.1f}')
             if np.average(scores_deque)>score_threshold:
                 break
-        result_dict[k] = scores 
+        result_dict[k] = scores
     pickle_results(RESULT_PATH, env_name, timestamp, result_dict)
     return scores
 

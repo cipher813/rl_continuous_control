@@ -48,21 +48,21 @@ class TD3:
 
         self.max_action = max_action
 
-        # Noise process
-        self.noise = OUNoise(action_size, random_seed)
+        # # Noise process
+        # self.noise = OUNoise(action_size, random_seed)
+        #
+        # # Replay memory
+        # self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
 
-        # Replay memory
-        self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
-
-    def step(self, state, action, reward, next_state, done):
-        """Save experience in replay memory, and use random sample from buffer to learn."""
-        # Save experience / reward
-        self.memory.add(state, action, reward, next_state, done)
-
-        # Learn, if enough samples are available in memory
-        if len(self.memory) > BATCH_SIZE:
-            experiences = self.memory.sample()
-            self.train(experiences, GAMMA)
+    # def step(self, state, action, reward, next_state, done):
+    #     """Save experience in replay memory, and use random sample from buffer to learn."""
+    #     # Save experience / reward
+    #     self.memory.add(state, action, reward, next_state, done)
+    #
+    #     # Learn, if enough samples are available in memory
+    #     if len(self.memory) > BATCH_SIZE:
+    #         experiences = self.memory.sample()
+    #         self.train(experiences, GAMMA)
 
     def select_action(self, state, add_noise=True): # act
         """Returns actions for given state as per current policy."""

@@ -62,7 +62,7 @@ class DDPG:
             experiences = self.memory.sample()
             self.train(experiences, GAMMA)
 
-    def select_action(self, state, add_noise=True): # act 
+    def select_action(self, state, add_noise=True): # act
         """Returns actions for given state as per current policy."""
         state = torch.FloatTensor(state.reshape(1, -1)).to(device)
         return self.actor(state).cpu().data.numpy().flatten()
@@ -103,6 +103,7 @@ class DDPG:
         # Minimize the loss
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
+        nn.utils.clip_grad_norm(self.critic.parameters(),1)
         self.critic_optimizer.step()
 
         # ---------------------------- update actor ---------------------------- #
