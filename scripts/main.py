@@ -1,3 +1,4 @@
+import os
 import re
 import gym
 import time
@@ -34,7 +35,24 @@ def pickle_results(RESULT_PATH, env_name, timestamp,pkl_file):
         pickle.dump(pkl_file, handle)
     print(f"Scores pickled at {pklpath}")
 
-def train_policy(env_name, agent_dict, n_episodes=20000, max_t=700, score_threshold=300.0):
+# def eval_episode(env, policy):
+#     state = env.reset()
+#     total_rewards = 0
+#     while True:
+#         action = policy.select_action(state)
+#         state, reward, done, _ = env.step(action)
+#         total_rewards += reward
+#         if done:
+#             break
+#     return total_rewards
+#
+# def eval_episodes(env, policy, eval_episodes=20):
+#     rewards = []
+#     for ep in range(eval_episodes):
+#         rewards.append(eval_episode(env, policy))
+#     return rewards
+
+def train_policy(env_name, agent_dict, n_episodes=20000, max_t=700, learn_every=20, score_threshold=300.0):
     result_dict = {}
     env = gym.make(env_name)
     env.seed(10)
@@ -52,20 +70,29 @@ def train_policy(env_name, agent_dict, n_episodes=20000, max_t=700, score_thresh
             policy.reset()
             score = 0
             for t in range(max_t):
+            # score_list = eval_episodes(env,policy)
                 action = policy.select_action(state)
                 next_state, reward, done, _ = env.step(action)
                 policy.step(state, action, reward, next_state, done)
                 state = next_state
                 score += reward
+
+                if t%learn_every==0:
+                    policy.start_learn()
+
                 if done:
                     break
             scores_deque.append(score)
             scores.append(score)
             end = time.time()
-            print(f'\rEpisode {i_episode}\tAverage Score: {np.mean(scores_deque):.2f}\tScore: {score:.2f}\tRuntime: {(end-start)/60:.1f}',end="")
-            if i_episode % 100 == 0:
-                torch.save(policy.actor.state_dict(), RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_actor.pth')
-                torch.save(policy.critic.state_dict(), RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_critic.pth')
+            print(f'\rEpisode {i_episode}\tAverage Score: {np.mean(scores_deque):.2f}\tRuntime: {(end-start)/60:.1f}',end="")
+            if i_episode % 100 == 0 or np.average(scores_deque)>=score_threshold:
+                # fap = RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_actor.pth'
+                fap = "../results/checkpoint_actor.pth"
+                torch.save(policy.actor.state_dict(), fap)
+                # fcp = RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_critic.pth'
+                fcp = "../results/checkpoint_critic.pth"
+                torch.save(policy.critic.state_dict(), fcp)
                 print(f'\rEpisode {i_episode}\tAverage Score: {np.mean(scores_deque):.2f}\tRuntime: {(end-start)/60:.1f}')
             if np.average(scores_deque)>score_threshold:
                 break

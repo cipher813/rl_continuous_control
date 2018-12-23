@@ -58,6 +58,7 @@ class DDPG:
         self.memory.add(state, action, reward, next_state, done)
 
         # Learn, if enough samples are available in memory
+    def start_learn(self):
         if len(self.memory) > BATCH_SIZE:
             experiences = self.memory.sample()
             self.train(experiences, GAMMA)
