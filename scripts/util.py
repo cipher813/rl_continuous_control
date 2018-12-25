@@ -21,27 +21,36 @@ def pickle_results(RESULT_PATH, env_name, timestamp,pkl_file):
         pickle.dump(pkl_file, handle)
     print(f"Scores pickled at {pklpath}")
 
-def prep_gym(env_name, random_seed):
-    env = gym.make(env_name)
-    env.seed(random_seed)
-    state_size = env.observation_space.shape[0]
-    action_size = env.action_space.shape[0]
-    max_action = float(env.action_space.high[0])
-    return env, state_size, action_size, max_action
+# def prep_gym(env_name, random_seed):
+#     env = gym.make(env_name)
+#     env.seed(random_seed)
+#     state_size = env.observation_space.shape[0]
+#     action_size = env.action_space.shape[0]
+#     max_action = float(env.action_space.high[0])
+#     return env, state_size, action_size, max_action
 
-def step_gym(env, action):
-    next_state, reward, done, _ = env.step(action)
-    return next_state, reward, done
+# def step_gym(env, action):
+#     next_state, reward, done, _ = env.step(action)
+#     return next_state, reward, done
 
-def prep_unity(DATA_PATH):
-    env = UnityEnvironment(file_name=DATA_PATH)
-    brain_name = env.brain_names[0]
-    brain = env.brains[brain_name]
-    env_info = env.reset()[brain_name]
-    state_size = len(env_info.vector_observations[0])
-    action_size = brain.vector_action_space_size
-    max_action = float(action_size)
-    return env, env_info, brain_name, brain, state_size, action_size, max_action
+# def prep_unity(PATH, env_name):
+#     from unityagents import UnityEnvironment
+#     env_path = PATH + f"data/{env_name}"
+#     env = UnityEnvironment(file_name=env_path)
+#     brain_name = env.brain_names[0]
+#     brain = env.brains[brain_name]
+#     env_info = env.reset()[brain_name]
+#     state_size = len(env_info.vector_observations[0])
+#     action_size = brain.vector_action_space_size
+#     max_action = float(action_size)
+#     return env, env_info, brain_name, brain, state_size, action_size, max_action
+
+def calc_runtime(seconds):
+    h = int(seconds//(60*60))
+    seconds = seconds - h*60*60
+    m = int(seconds//60)
+    s = seconds - m*60
+    return "{:02d}:{:02d}:{:.1f}".format(h,m,s)
 
 def step_unity(env, action):
     state = env_info.vector_observations[0]
@@ -52,7 +61,7 @@ def step_unity(env, action):
     done = env_info.local_done[0]
     return next_state, reward, done # state, action, env_info
 
-def train_policy(RESULT_PATH, env_name, agent_dict, n_episodes=20000, max_t=700,
+def train_gym(PATH, env_name, agent_dict, n_episodes=20000, max_t=700,
                  learn_every=20, num_learn=10, score_threshold=300.0, random_seed=10):
     """Run policy train.
 
@@ -65,10 +74,15 @@ def train_policy(RESULT_PATH, env_name, agent_dict, n_episodes=20000, max_t=700,
     num_learn (int): number of times to update network per every timestep increment (ie learn_every)
     score_threshold (float): once training reaches this average, break train
     """
+    RESULT_PATH = PATH + "results/"
     timestamp = re.sub(r"\D","",str(datetime.datetime.now()))[:12]
     start = time.time()
     result_dict = {}
-    env, state_size, action_size, max_action = prep_gym(env_name, random_seed) # gym
+    env = gym.make(env_name)
+    env.seed(random_seed)
+    state_size = env.observation_space.shape[0]
+    action_size = env.action_space.shape[0]
+    max_action = float(env.action_space.high[0])
     for k,v in agent_dict.items():
         policy_name = k
         policy = v(state_size,action_size,max_action, random_seed)
@@ -81,8 +95,7 @@ def train_policy(RESULT_PATH, env_name, agent_dict, n_episodes=20000, max_t=700,
             score = 0
             for t in range(max_t):
                 action = policy.act(state)
-                # next_state, reward, done, _ = env.step(action)
-                next_state, reward, done = step_gym(env, action) # gym
+                next_state, reward, done, _ = env.step(action)
                 policy.step(state, action, reward, next_state, done)
                 score += reward
                 state = next_state
@@ -96,21 +109,103 @@ def train_policy(RESULT_PATH, env_name, agent_dict, n_episodes=20000, max_t=700,
             scores_deque.append(score)
             scores.append(score)
             end = time.time()
-            print(f'\rEpisode {i_episode}\tAverage Score: {np.mean(scores_deque):.2f}\tRuntime: {(end-start)/60:.1f}',end="")
+            print(f'\rEpisode {i_episode}\tAverage Score: {np.mean(scores_deque):.2f}\tRuntime: {calc_runtime(end-start)}',end="")
             if i_episode % 100 == 0 or np.average(scores_deque)>=score_threshold:
                 fap = RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_actor.pth'
-                # fap = "../results/checkpoint_actor.pth"
                 torch.save(policy.actor.state_dict(), fap)
                 fcp = RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_critic.pth'
-                # fcp = "../results/checkpoint_critic.pth"
                 torch.save(policy.critic.state_dict(), fcp)
-                print(f'\rEpisode {i_episode}\tAverage Score: {np.mean(scores_deque):.2f}\tRuntime: {(end-start)/60:.1f}')
+                print(f'\rEpisode {i_episode}\tAverage Score: {np.mean(scores_deque):.2f}\tRuntime: {calc_runtime(end-start)}')
             if np.average(scores_deque)>score_threshold:
                 break
         end = time.time()
         result_dict[k] = {
                           "Scores": scores,
-                          "Runtime":np.round((end-start)/60,1)
+                          "Runtime":calc_runtime(end-start)
+                          }
+    pickle_results(RESULT_PATH, env_name, timestamp, result_dict)
+    return scores
+
+def train_unity(PATH, env_name, agent_dict, n_episodes=20000, max_t=1000,
+                 learn_every=20, num_learn=10, score_threshold=30.0, random_seed=10):
+    """Run policy train.
+
+    Arguments:
+    env_name (str): name of environment (ie for gym or unity)
+    agent_dict (dict): agents to train
+    n_episodes (int): max number of episodes to train
+    max_t (int): max timesteps per episode
+    learn_every (int): update network timestep increment
+    num_learn (int): number of times to update network per every timestep increment (ie learn_every)
+    score_threshold (float): once training reaches this average, break train
+    """
+    RESULT_PATH = PATH + "results/"
+    timestamp = re.sub(r"\D","",str(datetime.datetime.now()))[:12]
+    start = time.time()
+    result_dict = {}
+
+    from unityagents import UnityEnvironment
+    env_path = PATH + f"data/{env_name}"
+    env = UnityEnvironment(file_name=env_path)
+    brain_name = env.brain_names[0]
+    brain = env.brains[brain_name]
+    env_info = env.reset(train_mode=True)[brain_name]
+    num_agents = len(env_info.agents)
+    print(f"Number of agents: {num_agents}")
+    states = env_info.vector_observations
+    state_size = states.shape[1]
+    action_size = brain.vector_action_space_size
+    max_action = float(action_size)
+
+    for k,v in agent_dict.items():
+        policy_name = k
+        policy = v(state_size,action_size,max_action, random_seed)
+        total_scores_deque = deque(maxlen=100)
+        total_scores = []
+        max_score = -np.Inf
+        for i_episode in range(1, n_episodes+1):
+            env_info = env.reset(train_mode=True)[brain_name]
+            states = env_info.vector_observations
+            policy.reset()
+            scores = np.zeros(num_agents)
+            for t in range(max_t):
+                actions = policy.act(states)
+                env_info = env.step(actions)[brain_name]        # send the action to the environment
+                next_states = env_info.vector_observations
+                rewards = env_info.rewards                   # get the reward
+                dones = env_info.local_done
+                for state, action, reward, next_state, done in zip(states, actions, rewards, next_states, dones):
+                    policy.step(state, action, reward, next_state, done)
+                scores += rewards
+                states = next_states
+
+                if t%learn_every==0:
+                    for _ in range(num_learn):
+                        policy.start_learn()
+
+                if np.any(dones):
+                    break
+            mean_score = np.mean(scores)
+            min_score = np.min(scores)
+            max_score = np.max(scores)
+            total_scores_deque.append(mean_score)
+            total_scores.append(mean_score)
+            ep_avg_score = np.mean(total_scores_deque)
+            end = time.time()
+            print(f'\rEpisode {i_episode}\tScore Avg/Max/Min: {ep_avg_score:.3f}/{max_score:.3f}/{min_score:.3f}\tRuntime: {calc_runtime(end-start)}',end="")
+            if i_episode % 100 == 0 or ep_avg_score>=score_threshold:
+                fap = RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_actor.pth'
+                torch.save(policy.actor.state_dict(), fap)
+                fcp = RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_critic.pth'
+                torch.save(policy.critic.state_dict(), fcp)
+                print(f'\rEpisode {i_episode}\tAverage Score: {np.mean(scores_deque):.2f}\tRuntime: {calc_runtime(end-start)}')
+            if ep_avg_score>score_threshold:
+                print(f"Solved in {i_episode} and {calc_runtime(end-start)}")
+                break
+        end = time.time()
+        result_dict[k] = {
+                          "Scores": scores,
+                          "Runtime":calc_runtime(end-start)
                           }
     pickle_results(RESULT_PATH, env_name, timestamp, result_dict)
     return scores
