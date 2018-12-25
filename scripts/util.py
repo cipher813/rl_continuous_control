@@ -127,7 +127,7 @@ def train_gym(PATH, env_name, agent_dict, n_episodes=20000, max_t=700,
     return scores
 
 def train_unity(PATH, env_name, agent_dict, n_episodes=20000, max_t=1000,
-                 learn_every=20, num_learn=10, score_threshold=30.0, random_seed=10):
+                 learn_every=20, num_learn=10, score_threshold=30.0, random_seed=7):
     """Run policy train.
 
     Arguments:
@@ -159,7 +159,7 @@ def train_unity(PATH, env_name, agent_dict, n_episodes=20000, max_t=1000,
 
     for k,v in agent_dict.items():
         policy_name = k
-        policy = v(state_size,action_size,max_action, random_seed)
+        policy = v(state_size,action_size,random_seed) #max_action,
         total_scores_deque = deque(maxlen=100)
         total_scores = []
         max_score = -np.Inf
@@ -190,16 +190,16 @@ def train_unity(PATH, env_name, agent_dict, n_episodes=20000, max_t=1000,
             max_score = np.max(scores)
             total_scores_deque.append(mean_score)
             total_scores.append(mean_score)
-            ep_avg_score = np.mean(total_scores_deque)
+            total_average_score = np.mean(total_scores_deque)
             end = time.time()
-            print(f'\rEpisode {i_episode}\tScore Avg/Max/Min: {ep_avg_score:.3f}/{max_score:.3f}/{min_score:.3f}\tRuntime: {calc_runtime(end-start)}',end="")
-            if i_episode % 100 == 0 or ep_avg_score>=score_threshold:
+            print(f'\rEpisode {i_episode}\tScore TAS/Mean/Max/Min: {total_average_score:.3f}/{mean_score:.3f}/{max_score:.3f}/{min_score:.3f}\t{calc_runtime(end-start)}',end="")
+            if i_episode % 100 == 0 or total_average_score>=score_threshold:
                 fap = RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_actor.pth'
                 torch.save(policy.actor.state_dict(), fap)
                 fcp = RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_critic.pth'
                 torch.save(policy.critic.state_dict(), fcp)
-                print(f'\rEpisode {i_episode}\tAverage Score: {np.mean(scores_deque):.2f}\tRuntime: {calc_runtime(end-start)}')
-            if ep_avg_score>score_threshold:
+                print(f'\rEpisode {i_episode}\tAverage Score: {total_average_score:.2f}\tRuntime: {calc_runtime(end-start)}')
+            if total_average_score>score_threshold:
                 print(f"Solved in {i_episode} and {calc_runtime(end-start)}")
                 break
         end = time.time()

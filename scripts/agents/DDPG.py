@@ -9,19 +9,19 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 BUFFER_SIZE = int(1e6)  # replay buffer size
-BATCH_SIZE = 64         # minibatch size
+BATCH_SIZE = 1024#64         # minibatch size
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
-LR_ACTOR = 1e-4         # learning rate of the actor
-LR_CRITIC = 3e-4        # learning rate of the critic
-WEIGHT_DECAY = 0.01     # L2 weight decay
+LR_ACTOR = 1e-3#1e-4         # learning rate of the actor
+LR_CRITIC = 1e-3        # learning rate of the critic
+WEIGHT_DECAY = 0.#0.01     # L2 weight decay
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class DDPG:
     """Interacts with and learns from the environment."""
 
-    def __init__(self, state_size, action_size, max_action, random_seed):
+    def __init__(self, state_size, action_size, random_seed): #max_action,
         """Initialize an Agent object.
 
         Params
@@ -35,8 +35,8 @@ class DDPG:
         self.seed = random.seed(random_seed)
 
         # Actor Network (w/ Target Network)
-        self.actor = Actor(state_size, action_size, max_action, random_seed).to(device)
-        self.actor_target = Actor(state_size, action_size, max_action, random_seed).to(device)
+        self.actor = Actor(state_size, action_size, random_seed).to(device) #max_action,
+        self.actor_target = Actor(state_size, action_size, random_seed).to(device) #max_action,
         self.actor_target.load_state_dict(self.actor.state_dict())
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=LR_ACTOR)
 
@@ -104,7 +104,7 @@ class DDPG:
         # Minimize the loss
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        nn.utils.clip_grad_norm(self.critic.parameters(),1)
+        nn.utils.clip_grad_norm_(self.critic.parameters(),1)
         self.critic_optimizer.step()
 
         # ---------------------------- update actor ---------------------------- #
@@ -132,14 +132,14 @@ class DDPG:
         for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
             target_param.data.copy_(tau*local_param.data + (1.0-tau)*target_param.data)
 
-    def save(self, filename, directory):
-        torch.save(self.actor.state_dict(), '%s/%s_actor.pth' % (directory, filename))
-        torch.save(self.critic.state_dict(), '%s/%s_critic.pth' % (directory, filename))
-
-
-    def load(self, filename, directory):
-        self.actor.load_state_dict(torch.load('%s/%s_actor.pth' % (directory, filename)))
-        self.critic.load_state_dict(torch.load('%s/%s_critic.pth' % (directory, filename)))
+    # def save(self, filename, directory):
+    #     torch.save(self.actor.state_dict(), '%s/%s_actor.pth' % (directory, filename))
+    #     torch.save(self.critic.state_dict(), '%s/%s_critic.pth' % (directory, filename))
+    #
+    #
+    # def load(self, filename, directory):
+    #     self.actor.load_state_dict(torch.load('%s/%s_actor.pth' % (directory, filename)))
+    #     self.critic.load_state_dict(torch.load('%s/%s_critic.pth' % (directory, filename)))
 
 class OUNoise:
     """Ornstein-Uhlenbeck process."""
@@ -208,7 +208,7 @@ def hidden_init(layer):
 class Actor(nn.Module):
     """Actor (Policy) Model."""
 
-    def __init__(self, state_size, action_size, max_action, seed, fc1_units=400, fc2_units=300):
+    def __init__(self, state_size, action_size, seed, fc1_units=400, fc2_units=300): #max_action,
         """Initialize parameters and build model.
         Params
         ======
@@ -224,7 +224,7 @@ class Actor(nn.Module):
         self.bn1 = nn.BatchNorm1d(fc1_units)
         self.fc2 = nn.Linear(fc1_units,fc2_units)
         self.fc3 = nn.Linear(fc2_units, action_size)
-        self.max_action = max_action
+        # self.max_action = max_action
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -258,7 +258,9 @@ class Critic(nn.Module):
         super(Critic, self).__init__()
         self.seed = torch.manual_seed(seed)
         self.fc1 = nn.Linear(state_size, fc1_units)
+
         self.bn1 = nn.BatchNorm1d(fc1_units)
+
         self.fc2 = nn.Linear(fc1_units+action_size, fc2_units)
         self.fc3 = nn.Linear(fc2_units, 1)
         # self.fc4 = nn.Linear(fc3_units, 1)
