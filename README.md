@@ -8,6 +8,8 @@
 
 [Model](#model)
 
+[Resources](#resources)
+
 [Report](https://github.com/cipher813/rl_continuous_control/blob/master/report.md#report)
 
 - [RL Environment](https://github.com/cipher813/rl_continuous_control/blob/master/report.md#environment)
@@ -73,3 +75,10 @@ Charts the results from specified results dictionary pickle file.
 ### Models
 
 Contains the "checkpoint" [model weights](https://github.com/cipher813/rl_continuous_control/tree/master/models) of each implementation.  
+
+<a name="resources"></a>
+## Resources
+
+Code inspired by:
+https://github.com/udacity/deep-reinforcement-learning
+https://github.com/kinwo/deeprl-continuous-control

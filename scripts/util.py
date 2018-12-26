@@ -8,11 +8,6 @@ import random
 import datetime
 import numpy as np
 from collections import deque
-# import matplotlib.pyplot as plt
-# %matplotlib inline
-
-# from agents.DDPG import DDPG
-# from agents.TD3 import TD3
 
 def pickle_results(RESULT_PATH, env_name, timestamp,pkl_file):
     """ Save results to pickle file """
@@ -20,30 +15,6 @@ def pickle_results(RESULT_PATH, env_name, timestamp,pkl_file):
     with open(pklpath, 'wb') as handle:
         pickle.dump(pkl_file, handle)
     print(f"Scores pickled at {pklpath}")
-
-# def prep_gym(env_name, random_seed):
-#     env = gym.make(env_name)
-#     env.seed(random_seed)
-#     state_size = env.observation_space.shape[0]
-#     action_size = env.action_space.shape[0]
-#     max_action = float(env.action_space.high[0])
-#     return env, state_size, action_size, max_action
-
-# def step_gym(env, action):
-#     next_state, reward, done, _ = env.step(action)
-#     return next_state, reward, done
-
-# def prep_unity(PATH, env_name):
-#     from unityagents import UnityEnvironment
-#     env_path = PATH + f"data/{env_name}"
-#     env = UnityEnvironment(file_name=env_path)
-#     brain_name = env.brain_names[0]
-#     brain = env.brains[brain_name]
-#     env_info = env.reset()[brain_name]
-#     state_size = len(env_info.vector_observations[0])
-#     action_size = brain.vector_action_space_size
-#     max_action = float(action_size)
-#     return env, env_info, brain_name, brain, state_size, action_size, max_action
 
 def calc_runtime(seconds):
     h = int(seconds//(60*60))
@@ -141,7 +112,6 @@ def train_unity(PATH, env_name, agent_dict, n_episodes=20000, max_t=1000,
     """
     RESULT_PATH = PATH + "results/"
     timestamp = re.sub(r"\D","",str(datetime.datetime.now()))[:12]
-    start = time.time()
     result_dict = {}
 
     from unityagents import UnityEnvironment
@@ -154,20 +124,24 @@ def train_unity(PATH, env_name, agent_dict, n_episodes=20000, max_t=1000,
     print(f"Number of agents: {num_agents}")
     states = env_info.vector_observations
     state_size = states.shape[1]
+    print(f"There are {states.shape[0]} agents.  Each observes a state with length {state_size}")
+    print(f"The state for the first agent looks like\n{states[0]}")
     action_size = brain.vector_action_space_size
+    print(f"Size of each action: {action_size}")
     max_action = float(action_size)
 
     for k,v in agent_dict.items():
+        start = time.time()
         policy_name = k
         policy = v(state_size,action_size,random_seed) #max_action,
         total_scores_deque = deque(maxlen=100)
         total_scores = []
-        max_score = -np.Inf
+        # max_score = -np.Inf
         for i_episode in range(1, n_episodes+1):
             env_info = env.reset(train_mode=True)[brain_name]
             states = env_info.vector_observations
-            policy.reset()
             scores = np.zeros(num_agents)
+            policy.reset()
             for t in range(max_t):
                 actions = policy.act(states)
                 env_info = env.step(actions)[brain_name]        # send the action to the environment
@@ -176,7 +150,7 @@ def train_unity(PATH, env_name, agent_dict, n_episodes=20000, max_t=1000,
                 dones = env_info.local_done
                 for state, action, reward, next_state, done in zip(states, actions, rewards, next_states, dones):
                     policy.step(state, action, reward, next_state, done)
-                scores += rewards
+                scores += env_info.rewards
                 states = next_states
 
                 if t%learn_every==0:
@@ -193,7 +167,7 @@ def train_unity(PATH, env_name, agent_dict, n_episodes=20000, max_t=1000,
             total_average_score = np.mean(total_scores_deque)
             end = time.time()
             print(f'\rEpisode {i_episode}\tScore TAS/Mean/Max/Min: {total_average_score:.3f}/{mean_score:.3f}/{max_score:.3f}/{min_score:.3f}\t{calc_runtime(end-start)}',end="")
-            if i_episode % 100 == 0 or total_average_score>=score_threshold:
+            if i_episode % 20 == 0 or total_average_score>=score_threshold:
                 fap = RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_actor.pth'
                 torch.save(policy.actor.state_dict(), fap)
                 fcp = RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_critic.pth'
