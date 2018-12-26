@@ -97,7 +97,7 @@ def train_gym(PATH, env_name, agent_dict, n_episodes=20000, max_t=700,
     pickle_results(RESULT_PATH, env_name, timestamp, result_dict)
     return scores
 
-def train_unity(PATH, env_name, agent_dict, n_episodes=20000, max_t=1000,
+def train_unity(PATH, env_name, env_path, agent_dict, n_episodes=20000, max_t=1000,
                  learn_every=20, num_learn=10, score_threshold=30.0, random_seed=7):
     """Run policy train.
 
@@ -115,7 +115,7 @@ def train_unity(PATH, env_name, agent_dict, n_episodes=20000, max_t=1000,
     result_dict = {}
 
     from unityagents import UnityEnvironment
-    env_path = PATH + f"data/{env_name}"
+    env_path = PATH + f"data/{env_path}"
     env = UnityEnvironment(file_name=env_path)
     brain_name = env.brain_names[0]
     brain = env.brains[brain_name]
@@ -125,7 +125,7 @@ def train_unity(PATH, env_name, agent_dict, n_episodes=20000, max_t=1000,
     states = env_info.vector_observations
     state_size = states.shape[1]
     print(f"There are {states.shape[0]} agents.  Each observes a state with length {state_size}")
-    print(f"The state for the first agent looks like\n{states[0]}")
+    print(f"The state for the first agent looks like:\n{states[0]}")
     action_size = brain.vector_action_space_size
     print(f"Size of each action: {action_size}")
     max_action = float(action_size)
