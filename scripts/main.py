@@ -13,5 +13,5 @@ agent_dict = {
              }
 
 # scores = train_gym(PATH, "BipedalWalker-v2",agent_dict)
-# scores = train_unity(PATH, "Reacher20.app",agent_dict)
+# scores = train_unity(PATH, "Reacher20","Reacher20.app",agent_dict)
 scores = train_unity(PATH,"Reacher20","Reacher_Linux_NoVis2/Reacher.x86_64",agent_dict)

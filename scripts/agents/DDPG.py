@@ -9,7 +9,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 BUFFER_SIZE = int(1e6)  # replay buffer size
-BATCH_SIZE = 1024         # minibatch size
+BATCH_SIZE = 1024 #512         # minibatch size
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 1e-3         # learning rate of the actor
@@ -21,7 +21,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class DDPG:
     """Interacts with and learns from the environment."""
 
-    def __init__(self, state_size, action_size, random_seed): #max_action,
+    def __init__(self, state_size, action_size, num_agents, learn_freq, random_seed): #max_action,
         """Initialize an Agent object.
 
         Params
@@ -32,18 +32,20 @@ class DDPG:
         """
         self.state_size = state_size
         self.action_size = action_size
+        self.num_agents = num_agents
+        self.learn_freq = learn_freq
         self.seed = random.seed(random_seed)
 
         # Actor Network (w/ Target Network)
         self.actor = Actor(state_size, action_size, random_seed).to(device) #max_action,
         self.actor_target = Actor(state_size, action_size, random_seed).to(device) #max_action,
-        self.actor_target.load_state_dict(self.actor.state_dict())
+        # self.actor_target.load_state_dict(self.actor.state_dict())
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=LR_ACTOR)
 
         # Critic Network (w/ Target Network)
         self.critic = Critic(state_size, action_size, random_seed).to(device)
         self.critic_target = Critic(state_size, action_size, random_seed).to(device)
-        self.critic_target.load_state_dict(self.critic.state_dict())
+        # self.critic_target.load_state_dict(self.critic.state_dict())
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)
 
         # Noise process
@@ -60,8 +62,9 @@ class DDPG:
         # Learn, if enough samples are available in memory
     def start_learn(self):
         if len(self.memory) > BATCH_SIZE:
-            experiences = self.memory.sample()
-            self.learn(experiences, GAMMA)
+            for _ in range(self.num_agents*self.learn_freq):
+                experiences = self.memory.sample()
+                self.learn(experiences, GAMMA)
 
     def act(self, state, add_noise=True): # act
         """Returns actions for given state as per current policy."""
@@ -73,7 +76,8 @@ class DDPG:
             action = self.actor(state).cpu().data.numpy()
         self.actor.train()
         if add_noise:
-            action += self.noise.sample()
+            for i in range(self.num_agents):
+                action[i] += self.noise.sample()
         return np.clip(action, -1, 1)
 
     def reset(self):
@@ -221,7 +225,9 @@ class Actor(nn.Module):
         super(Actor, self).__init__()
         self.seed = torch.manual_seed(seed)
         self.fc1 = nn.Linear(state_size, fc1_units)
+
         self.bn1 = nn.BatchNorm1d(fc1_units)
+
         self.fc2 = nn.Linear(fc1_units,fc2_units)
         self.fc3 = nn.Linear(fc2_units, action_size)
         # self.max_action = max_action
@@ -245,7 +251,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """Critic (Value) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1_units=400, fc2_units=400):
+    def __init__(self, state_size, action_size, seed, fc1_units=400, fc2_units=300):
         """Initialize parameters and build model.
         Params
         ======
