@@ -98,8 +98,8 @@ def step_unity(env, action):
 #     pickle_results(RESULT_PATH, env_name, timestamp, result_dict)
 #     return scores
 
-def train_unity(PATH, env_name, env_path, agent_dict, n_episodes=20000, # max_t=1000,
-                 learn_freq=20, score_threshold=30.0, random_seed=7):
+def train_unity(PATH, env_name, env_path, agent_dict, n_episodes=20000, # max_t=1000,learn_freq=20, 
+                 score_threshold=30.0, random_seed=2):
     """Run policy train.
 
     Arguments:

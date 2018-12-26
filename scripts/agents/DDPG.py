@@ -8,20 +8,21 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-BUFFER_SIZE = int(1e6)  # replay buffer size
-BATCH_SIZE = 1024 #512         # minibatch size
+BUFFER_SIZE = int(5e5)  # replay buffer size
+BATCH_SIZE = 512         # minibatch size
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 1e-3         # learning rate of the actor
-LR_CRITIC = 1e-3        # learning rate of the critic
+LR_CRITIC = 3e-3        # learning rate of the critic
 WEIGHT_DECAY = 0.#0.01     # L2 weight decay
+NUM_AGENTS = 20
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class DDPG:
     """Interacts with and learns from the environment."""
 
-    def __init__(self, state_size, action_size, num_agents, learn_freq, random_seed): #max_action,
+    def __init__(self, state_size, action_size, random_seed): #max_action,learn_freq,num_agents,
         """Initialize an Agent object.
 
         Params
@@ -32,8 +33,8 @@ class DDPG:
         """
         self.state_size = state_size
         self.action_size = action_size
-        self.num_agents = num_agents
-        self.learn_freq = learn_freq
+        # self.num_agents = num_agents
+        # self.learn_freq = learn_freq
         self.seed = random.seed(random_seed)
 
         # Actor Network (w/ Target Network)
@@ -62,7 +63,7 @@ class DDPG:
         # Learn, if enough samples are available in memory
     def start_learn(self):
         if len(self.memory) > BATCH_SIZE:
-            for _ in range(self.num_agents*self.learn_freq):
+            for _ in range(NUM_AGENTS*20):
                 experiences = self.memory.sample()
                 self.learn(experiences, GAMMA)
 
@@ -76,7 +77,7 @@ class DDPG:
             action = self.actor(state).cpu().data.numpy()
         self.actor.train()
         if add_noise:
-            for i in range(self.num_agents):
+            for i in range(NUM_AGENTS):
                 action[i] += self.noise.sample()
         return np.clip(action, -1, 1)
 
@@ -117,6 +118,7 @@ class DDPG:
         actor_loss = -self.critic(states, actions_pred).mean()
         # Minimize the loss
         self.actor_optimizer.zero_grad()
+        nn.utils.clip_grad_norm_(self.actor.parameters(),1)
         actor_loss.backward()
         self.actor_optimizer.step()
 
@@ -212,7 +214,7 @@ def hidden_init(layer):
 class Actor(nn.Module):
     """Actor (Policy) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1_units=400, fc2_units=300): #max_action,
+    def __init__(self, state_size, action_size, seed, fc1_units=128, fc2_units=64): #max_action,
         """Initialize parameters and build model.
         Params
         ======
@@ -251,7 +253,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """Critic (Value) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1_units=400, fc2_units=300):
+    def __init__(self, state_size, action_size, seed, fc1_units=128, fc2_units=64):
         """Initialize parameters and build model.
         Params
         ======
