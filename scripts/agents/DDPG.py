@@ -12,10 +12,10 @@ BUFFER_SIZE = int(1e6)  # replay buffer size
 BATCH_SIZE = 1024         # minibatch size
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
-LR_ACTOR = 1e-3         # learning rate of the actor
+LR_ACTOR = 5e-4         # learning rate of the actor
 LR_CRITIC = 3e-3        # learning rate of the critic
 WEIGHT_DECAY = 0.#0.01     # L2 weight decay
-# NUM_AGENTS = 20
+NUM_AGENTS = 20
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -55,17 +55,25 @@ class DDPG:
         # Replay memory
         self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
 
-    def step(self, state, action, reward, next_state, done):
+    def step(self, state, action, reward, next_state, done, timestep):
         """Save experience in replay memory, and use random sample from buffer to learn."""
         # Save experience / reward
-        self.memory.add(state, action, reward, next_state, done)
+        for i in range(NUM_AGENTS):
+            self.memory.add(state[i], action[i], reward[i], next_state[i], done[i])
+
+        if timestep%NUM_AGENTS==0:
+            if len(self.memory)>BATCH_SIZE:
+                for i in range(10):
+                    experiences = self.memory.sample()
+                    self.learn(experiences, GAMMA)
+
 
         # Learn, if enough samples are available in memory
-    def start_learn(self):
-        if len(self.memory) > BATCH_SIZE:
-            # for _ in range(NUM_AGENTS*20):
-            experiences = self.memory.sample()
-            self.learn(experiences, GAMMA)
+    # def start_learn(self):
+    #     if len(self.memory) > BATCH_SIZE:
+    #         # for _ in range(NUM_AGENTS*20):
+    #         experiences = self.memory.sample()
+    #         self.learn(experiences, GAMMA)
 
     def act(self, state, add_noise=True): # act
         """Returns actions for given state as per current policy."""
@@ -77,8 +85,8 @@ class DDPG:
             action = self.actor(state).cpu().data.numpy()
         self.actor.train()
         if add_noise:
-            # for i in range(NUM_AGENTS):
-            action += self.noise.sample()
+            for i in range(NUM_AGENTS):
+                action[i] += self.noise.sample()
         return np.clip(action, -1, 1)
 
     def reset(self):
@@ -118,7 +126,7 @@ class DDPG:
         actor_loss = -self.critic(states, actions_pred).mean()
         # Minimize the loss
         self.actor_optimizer.zero_grad()
-        nn.utils.clip_grad_norm_(self.actor.parameters(),1)
+        # nn.utils.clip_grad_norm_(self.actor.parameters(),1)
         actor_loss.backward()
         self.actor_optimizer.step()
 

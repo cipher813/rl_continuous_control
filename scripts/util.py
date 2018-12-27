@@ -150,17 +150,18 @@ def train_unity(PATH, env_name, env_path, agent_dict, n_episodes=20000, # max_t=
                 next_states = env_info.vector_observations
                 rewards = env_info.rewards                   # get the reward
                 dones = env_info.local_done
+                agent.step(states, actions, rewards, next_states, dones, t)
+                states = next_states
                 scores += env_info.rewards
-                for state, action, reward, next_state, done in zip(states, actions, rewards, next_states, dones):
-                    policy.step(state, action, reward, next_state, done)
+                # for state, action, reward, next_state, done in zip(states, actions, rewards, next_states, dones):
+                #     policy.step(state, action, reward, next_state, done)
 
-                if t%learn_every==0:
-                    for _ in range(num_learn):
-                        policy.start_learn()
+                # if t%learn_every==0:
+                #     for _ in range(num_learn):
+                #         policy.start_learn()
 
                 if np.any(dones):
                     break
-                states = next_states
             # policy.start_learn()
             mean_score = np.mean(scores)
             min_score = np.min(scores)
