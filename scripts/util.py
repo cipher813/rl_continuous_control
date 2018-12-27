@@ -98,8 +98,8 @@ def step_unity(env, action):
 #     pickle_results(RESULT_PATH, env_name, timestamp, result_dict)
 #     return scores
 
-def train_unity(PATH, env_name, env_path, agent_dict, n_episodes=20000, # max_t=1000,learn_freq=20, 
-                 score_threshold=30.0, random_seed=2):
+def train_unity(PATH, env_name, env_path, agent_dict, n_episodes=20000, # max_t=1000,
+                 score_threshold=30.0, learn_every=20, num_learn=10, random_seed=7):
     """Run policy train.
 
     Arguments:
@@ -129,12 +129,12 @@ def train_unity(PATH, env_name, env_path, agent_dict, n_episodes=20000, # max_t=
     print(f"The state for the first agent looks like:\n{states[0]}")
     action_size = brain.vector_action_space_size
     print(f"Size of each action: {action_size}")
-    max_action = float(action_size)
+    # max_action = float(action_size)
 
     for k,v in agent_dict.items():
         start = time.time()
         policy_name = k
-        policy = v(state_size,action_size,num_agents,learn_freq, random_seed) #max_action,
+        policy = v(state_size,action_size,random_seed) #max_action,num_agents,learn_freq,
         total_scores_deque = deque(maxlen=100)
         total_scores = []
         # max_score = -np.Inf
@@ -143,8 +143,8 @@ def train_unity(PATH, env_name, env_path, agent_dict, n_episodes=20000, # max_t=
             states = env_info.vector_observations
             scores = np.zeros(num_agents)
             policy.reset()
-            while True:
-            # for t in range(max_t):
+            # while True:
+            for t in range(max_t):
                 actions = policy.act(states)
                 env_info = env.step(actions)[brain_name]        # send the action to the environment
                 next_states = env_info.vector_observations
@@ -154,14 +154,14 @@ def train_unity(PATH, env_name, env_path, agent_dict, n_episodes=20000, # max_t=
                 for state, action, reward, next_state, done in zip(states, actions, rewards, next_states, dones):
                     policy.step(state, action, reward, next_state, done)
 
-                # if t%learn_every==0:
-                #     for _ in range(num_learn):
-                #         policy.start_learn()
+                if t%learn_every==0:
+                    for _ in range(num_learn):
+                        policy.start_learn()
 
                 if np.any(dones):
                     break
                 states = next_states
-            policy.start_learn()
+            # policy.start_learn()
             mean_score = np.mean(scores)
             min_score = np.min(scores)
             max_score = np.max(scores)

@@ -8,14 +8,14 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-BUFFER_SIZE = int(5e5)  # replay buffer size
-BATCH_SIZE = 512         # minibatch size
+BUFFER_SIZE = int(1e6)  # replay buffer size
+BATCH_SIZE = 1024         # minibatch size
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 1e-3         # learning rate of the actor
 LR_CRITIC = 3e-3        # learning rate of the critic
 WEIGHT_DECAY = 0.#0.01     # L2 weight decay
-NUM_AGENTS = 20
+# NUM_AGENTS = 20
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -63,9 +63,9 @@ class DDPG:
         # Learn, if enough samples are available in memory
     def start_learn(self):
         if len(self.memory) > BATCH_SIZE:
-            for _ in range(NUM_AGENTS*20):
-                experiences = self.memory.sample()
-                self.learn(experiences, GAMMA)
+            # for _ in range(NUM_AGENTS*20):
+            experiences = self.memory.sample()
+            self.learn(experiences, GAMMA)
 
     def act(self, state, add_noise=True): # act
         """Returns actions for given state as per current policy."""
@@ -77,8 +77,8 @@ class DDPG:
             action = self.actor(state).cpu().data.numpy()
         self.actor.train()
         if add_noise:
-            for i in range(NUM_AGENTS):
-                action[i] += self.noise.sample()
+            # for i in range(NUM_AGENTS):
+            action += self.noise.sample()
         return np.clip(action, -1, 1)
 
     def reset(self):
@@ -214,7 +214,7 @@ def hidden_init(layer):
 class Actor(nn.Module):
     """Actor (Policy) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1_units=128, fc2_units=64): #max_action,
+    def __init__(self, state_size, action_size, seed, fc1_units=400, fc2_units=300): #max_action,
         """Initialize parameters and build model.
         Params
         ======
@@ -253,7 +253,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """Critic (Value) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1_units=128, fc2_units=64):
+    def __init__(self, state_size, action_size, seed, fc1_units=400, fc2_units=300):
         """Initialize parameters and build model.
         Params
         ======
