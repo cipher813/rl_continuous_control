@@ -15,14 +15,16 @@ TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 5e-4         # learning rate of the actor
 LR_CRITIC = 3e-3        # learning rate of the critic
 WEIGHT_DECAY = 0.#0.01     # L2 weight decay
-NUM_AGENTS = 20
+LEARN_EVERY = 20
+NUM_LEARN = 10
+# NUM_AGENTS = 20
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class DDPG:
     """Interacts with and learns from the environment."""
 
-    def __init__(self, state_size, action_size, random_seed): #max_action,learn_freq,num_agents,
+    def __init__(self, state_size, action_size, num_agents, random_seed): #max_action,learn_freq,num_agents,
         """Initialize an Agent object.
 
         Params
@@ -33,8 +35,9 @@ class DDPG:
         """
         self.state_size = state_size
         self.action_size = action_size
-        # self.num_agents = num_agents
-        # self.learn_freq = learn_freq
+        self.num_agents = num_agents
+        # self.learn_every = learn_every
+        # self.num_learn = num_learn
         self.seed = random.seed(random_seed)
 
         # Actor Network (w/ Target Network)
@@ -58,12 +61,13 @@ class DDPG:
     def step(self, state, action, reward, next_state, done, timestep):
         """Save experience in replay memory, and use random sample from buffer to learn."""
         # Save experience / reward
-        for i in range(NUM_AGENTS):
+        for i in range(self.num_agents):
             self.memory.add(state[i], action[i], reward[i], next_state[i], done[i])
 
-        if timestep%NUM_AGENTS==0:
+        # learn 10 (NUM_LEARN) experiences every 20 (LEARN_EVERY) timesteps 
+        if timestep%LEARN_EVERY==0:
             if len(self.memory)>BATCH_SIZE:
-                for i in range(10):
+                for i in range(NUM_LEARN):
                     experiences = self.memory.sample()
                     self.learn(experiences, GAMMA)
 
@@ -85,7 +89,7 @@ class DDPG:
             action = self.actor(state).cpu().data.numpy()
         self.actor.train()
         if add_noise:
-            for i in range(NUM_AGENTS):
+            for i in range(self.num_agents):
                 action[i] += self.noise.sample()
         return np.clip(action, -1, 1)
 

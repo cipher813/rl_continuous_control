@@ -33,7 +33,7 @@ def step_unity(env, action):
     return next_state, reward, done # state, action, env_info
 
 def train_unity(PATH, env_name, env_path, agent_dict, n_episodes=20000, max_t=1000,
-                 score_threshold=30.0, learn_every=20, num_learn=10, random_seed=7):
+                 score_threshold=30.0, learn_every=20, random_seed=7): #num_learn=10,
     """Run policy train.
 
     Arguments:
@@ -68,7 +68,7 @@ def train_unity(PATH, env_name, env_path, agent_dict, n_episodes=20000, max_t=10
     for k,v in agent_dict.items():
         start = time.time()
         policy_name = k
-        policy = v(state_size,action_size,random_seed) #max_action,num_agents,learn_freq,
+        policy = v(state_size,action_size,num_agents, random_seed) #max_action,num_agents,learn_freq,
         # total_scores_deque = deque(maxlen=100)
         total_scores = []
         # max_score = -np.Inf
