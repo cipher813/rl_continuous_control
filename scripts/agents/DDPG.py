@@ -17,7 +17,6 @@ LR_CRITIC = 3e-3        # learning rate of the critic
 WEIGHT_DECAY = 0.#0.01     # L2 weight decay
 LEARN_EVERY = 20
 NUM_LEARN = 10
-# NUM_AGENTS = 20
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -36,8 +35,6 @@ class DDPG:
         self.state_size = state_size
         self.action_size = action_size
         self.num_agents = num_agents
-        # self.learn_every = learn_every
-        # self.num_learn = num_learn
         self.seed = random.seed(random_seed)
 
         # Actor Network (w/ Target Network)
@@ -64,20 +61,12 @@ class DDPG:
         for i in range(self.num_agents):
             self.memory.add(state[i], action[i], reward[i], next_state[i], done[i])
 
-        # learn 10 (NUM_LEARN) experiences every 20 (LEARN_EVERY) timesteps 
+        # learn 10 (NUM_LEARN) experiences every 20 (LEARN_EVERY) timesteps
         if timestep%LEARN_EVERY==0:
             if len(self.memory)>BATCH_SIZE:
                 for i in range(NUM_LEARN):
                     experiences = self.memory.sample()
                     self.learn(experiences, GAMMA)
-
-
-        # Learn, if enough samples are available in memory
-    # def start_learn(self):
-    #     if len(self.memory) > BATCH_SIZE:
-    #         # for _ in range(NUM_AGENTS*20):
-    #         experiences = self.memory.sample()
-    #         self.learn(experiences, GAMMA)
 
     def act(self, state, add_noise=True): # act
         """Returns actions for given state as per current policy."""
@@ -254,10 +243,6 @@ class Actor(nn.Module):
 
     def forward(self, state):
         """Build an actor (policy) network that maps states -> actions."""
-        # x = F.relu(self.fc1(state))
-        # x = F.relu(self.fc2(x))
-        # x = self.max_action * F.tanh(self.fc3(x))
-        # return x
         x = F.relu(self.bn1(self.fc1(state)))
         x = F.relu(self.fc2(x))
         return F.tanh(self.fc3(x))
@@ -283,24 +268,16 @@ class Critic(nn.Module):
 
         self.fc2 = nn.Linear(fc1_units+action_size, fc2_units)
         self.fc3 = nn.Linear(fc2_units, 1)
-        # self.fc4 = nn.Linear(fc3_units, 1)
         self.reset_parameters()
 
     def reset_parameters(self):
         self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
         self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
-        # self.fc3.weight.data.uniform_(*hidden_init(self.fc3))
         self.fc3.weight.data.uniform_(-3e-3, 3e-3)
 
     def forward(self, state, action):
         """Build a critic (value) network that maps (state, action) pairs -> Q-values."""
-        # xs = F.leaky_relu(self.fc1(state))
-        # x = torch.cat((xs, action), dim=1)
-        # x = F.leaky_relu(self.fc2(x))
-        # x = F.leaky_relu(self.fc3(x))
-        # return self.fc4(x)
         xs = F.relu(self.bn1(self.fc1(state)))
         x = torch.cat((xs, action),dim=1)
         x = F.relu(self.fc2(x))
-        # x = F.relu(self.fc3(x))
         return self.fc3(x)
