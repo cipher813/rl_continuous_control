@@ -15,15 +15,15 @@ TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 5e-4         # learning rate of the actor
 LR_CRITIC = 3e-3        # learning rate of the critic
 WEIGHT_DECAY = 0.#0.01     # L2 weight decay
-LEARN_EVERY = 20
-NUM_LEARN = 10
+# LEARN_EVERY = 20
+# NUM_LEARN = 10
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class DDPG:
     """Interacts with and learns from the environment."""
 
-    def __init__(self, state_size, action_size, num_agents, random_seed): #max_action,learn_freq,num_agents,
+    def __init__(self, state_size, action_size, num_agents, random_seed=7):
         """Initialize an Agent object.
 
         Params
@@ -35,6 +35,8 @@ class DDPG:
         self.state_size = state_size
         self.action_size = action_size
         self.num_agents = num_agents
+        self.learn_every = num_agents
+        self.num_learn = num_agents//2 if num_agents > 1 else 1
         self.seed = random.seed(random_seed)
 
         # Actor Network (w/ Target Network)
@@ -58,13 +60,16 @@ class DDPG:
     def step(self, state, action, reward, next_state, done, timestep):
         """Save experience in replay memory, and use random sample from buffer to learn."""
         # Save experience / reward
-        for i in range(self.num_agents):
-            self.memory.add(state[i], action[i], reward[i], next_state[i], done[i])
+        if self.num_agents>1:
+            for i in range(self.num_agents):
+                self.memory.add(state[i], action[i], reward[i], next_state[i], done[i])
+        else:
+            self.memory.add(state, action, reward, next_state, done)
 
         # learn 10 (NUM_LEARN) experiences every 20 (LEARN_EVERY) timesteps
-        if timestep%LEARN_EVERY==0:
+        if timestep%self.learn_every==0:
             if len(self.memory)>BATCH_SIZE:
-                for i in range(NUM_LEARN):
+                for i in range(self.num_learn):
                     experiences = self.memory.sample()
                     self.learn(experiences, GAMMA)
 
@@ -78,8 +83,11 @@ class DDPG:
             action = self.actor(state).cpu().data.numpy()
         self.actor.train()
         if add_noise:
-            for i in range(self.num_agents):
-                action[i] += self.noise.sample()
+            if self.num_agents>1:
+                for i in range(self.num_agents):
+                    action[i] += self.noise.sample()
+            else:
+                action += self.noise.sample()
         return np.clip(action, -1, 1)
 
     def reset(self):
@@ -229,7 +237,7 @@ class Actor(nn.Module):
         self.seed = torch.manual_seed(seed)
         self.fc1 = nn.Linear(state_size, fc1_units)
 
-        self.bn1 = nn.BatchNorm1d(fc1_units)
+        # self.bn1 = nn.BatchNorm1d(fc1_units) # removing for gym
 
         self.fc2 = nn.Linear(fc1_units,fc2_units)
         self.fc3 = nn.Linear(fc2_units, action_size)
@@ -243,7 +251,8 @@ class Actor(nn.Module):
 
     def forward(self, state):
         """Build an actor (policy) network that maps states -> actions."""
-        x = F.relu(self.bn1(self.fc1(state)))
+        # x = F.relu(self.bn1(self.fc1(state)))
+        x = F.relu(self.fc1(state))
         x = F.relu(self.fc2(x))
         return F.tanh(self.fc3(x))
 

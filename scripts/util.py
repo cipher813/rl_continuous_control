@@ -101,7 +101,7 @@ def step_gym(env, num_agents, policy, max_t):
     return scores
 
 def train_policy(PATH, env_name, platform, env_path, agent_dict, score_threshold, timestamp,
-                n_episodes=20000, max_t=1000, num_agents=1, learn_every=20, random_seed=7):
+                n_episodes=20000, max_t=1000, num_agents=1): #, learn_every=20, random_seed=7
     """Run policy train.
 
     Arguments:
@@ -122,8 +122,13 @@ def train_policy(PATH, env_name, platform, env_path, agent_dict, score_threshold
     for k,v in agent_dict.items():
         start = time.time()
         policy_name = k
-        policy = v(state_size,action_size,num_agents, random_seed) #max_action,num_agents,learn_freq,
+        # if policy_name=="DDPG":
+        policy = v(state_size,action_size,num_agents) #max_action,num_agents,learn_freq,, random_seed
+        # elif policy_name=="PPO":
+        #     policy = v(policy,clip_param,ppo_epoch,num_mini_batch,value_loss_coef,entropy_coef)
         # total_scores_deque = deque(maxlen=100)
+        # else:
+        #     print("Load a valid policy.")
         total_scores = []
         # max_score = -np.Inf
         for i_episode in range(1, n_episodes+1):
@@ -156,7 +161,7 @@ def train_policy(PATH, env_name, platform, env_path, agent_dict, score_threshold
                           "Scores": total_scores,
                           "Runtime":calc_runtime(end-start)
                           }
-        env.close()
+        # env.close()
     pickle_results(RESULT_PATH, env_name, timestamp, result_dict)
     return scores
 
