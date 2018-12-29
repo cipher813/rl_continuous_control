@@ -10,17 +10,21 @@ import torch.nn.functional as F
 
 BUFFER_SIZE = int(1e6)  # replay buffer size
 BATCH_SIZE = 1024         # minibatch size
+ALPHA = 0.4             # alpha, prioritization level (alpha=0 is uniform)
+BETA = 1.0             # beta, importance-sampling weight to control how much weights affect learning
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 5e-4         # learning rate of the actor
 LR_CRITIC = 3e-3        # learning rate of the critic
 WEIGHT_DECAY = 0.#0.01     # L2 weight decay
-# LEARN_EVERY = 20
-# NUM_LEARN = 10
+VMAX = 5
+VMIN = 0
+ATOMS = 51
+DELTA_Z = (VMAX - VMIN) / (ATOMS - 1)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-class DDPG:
+class DDPGplus:
     """Interacts with and learns from the environment."""
 
     def __init__(self, state_size, action_size, num_agents, random_seed=7):
@@ -46,8 +50,8 @@ class DDPG:
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=LR_ACTOR)
 
         # Critic Network (w/ Target Network)
-        self.critic = Critic(state_size, action_size, random_seed).to(device)
-        self.critic_target = Critic(state_size, action_size, random_seed).to(device)
+        self.critic = Critic(state_size, action_size, random_seed, atoms=ATOMS, vmin=VMIN, vmax=VMAX).to(device)
+        self.critic_target = Critic(state_size, action_size, random_seed, atoms=ATOMS, vmin=VMIN, vmax=VMAX).to(device)
         # self.critic_target.load_state_dict(self.critic.state_dict())
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)
 
@@ -55,9 +59,11 @@ class DDPG:
         self.noise = OUNoise(action_size, random_seed)
 
         # Replay memory
-        self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
+        self.memory = PriorityReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
 
-    def step(self, state, action, reward, next_state, done, timestep):
+        # self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
+
+    def step(self, state, action, reward, next_state, done, timestep, alpha=ALPHA, beta=BETA):
         """Save experience in replay memory, and use random sample from buffer to learn."""
         # Save experience / reward
         if self.num_agents>1:
@@ -70,7 +76,7 @@ class DDPG:
         if timestep%self.learn_every==0:
             if len(self.memory)>BATCH_SIZE:
                 for i in range(self.num_learn):
-                    experiences = self.memory.sample()
+                    experiences = self.memory.sample(alpha, beta)
                     self.learn(experiences, GAMMA)
 
     def act(self, state, add_noise=True): # act
@@ -104,7 +110,7 @@ class DDPG:
             experiences (Tuple[torch.Tensor]): tuple of (s, a, r, s', done) tuples
             gamma (float): discount factor
         """
-        states, actions, rewards, next_states, dones = experiences
+        states, actions, rewards, next_states, dones, weights, idxs = experiences
 
         # ---------------------------- update critic ---------------------------- #
         # Get predicted next-state actions and Q values from target models
@@ -180,7 +186,6 @@ class OUNoise:
 
 class ReplayBuffer:
     """Fixed-size buffer to store experience tuples."""
-
     def __init__(self, action_size, buffer_size, batch_size, seed):
         """Initialize a ReplayBuffer object.
         Params
@@ -214,6 +219,54 @@ class ReplayBuffer:
     def __len__(self):
         """Return the current size of internal memory."""
         return len(self.memory)
+
+class PriorityReplayBuffer(ReplayBuffer):
+    """
+    Fixed-size buffer to store experience tuples
+    See paper "Prioritized Experience Replay" at https://arxiv.org/abs/1511.05952
+    Inspired by code from https://github.com/franckalbinet/drlnd-project1/blob/master/dqn_agent.py
+    """
+    def __init__(self, action_size, buffer_size, batch_size, seed):
+        """Prioritizes experience replay buffer to store experience tuples"""
+        super(PriorityReplayBuffer, self).__init__(action_size, buffer_size, batch_size, seed)
+        # super().__init__(acts, bs, seed, buf_sz=buf_sz)
+        self.experience = namedtuple("Experience",field_names=["state","action","reward","next_state","done","priority"])
+
+    def add(self, state, action, reward, next_state, done):
+        """Add a new experience to memory"""
+        max_priority = max([m.priority for m in self.memory]) if self.memory else 1.0
+        e = self.experience(state,action,reward,next_state,done,max_priority)
+        self.memory.append(e)
+
+    def sample(self, alpha, beta):
+        """
+        Randomly sample a batch of expers from memory
+        a (float): alpha prioritization factor (a=0 is uniform)
+        b (float): beta importance-sampling weight to control how much weights affect learning
+        """
+        priorities = np.array([sample.priority for sample in self.memory])
+        probs = priorities ** alpha
+        probs /= probs.sum()
+
+        idxs = np.random.choice(len(self.memory),self.batch_size, replace=False, p=probs)
+        experiences = [self.memory[idx] for idx in idxs]
+        total = len(self.memory)
+        weights = (total*probs[idxs])**(-beta)
+        weights /= weights.max()
+        weights = np.array(weights, dtype=np.float32)
+
+        states = torch.from_numpy(np.vstack([e.state for e in experiences if e is not None])).float().to(device)
+        actions = torch.from_numpy(np.vstack([e.action for e in experiences if e is not None])).long().to(device)
+        rewards = torch.from_numpy(np.vstack([e.reward for e in experiences if e is not None])).float().to(device)
+        next_states = torch.from_numpy(np.vstack([e.next_state for e in experiences if e is not None])).float().to(device)
+        dones = torch.from_numpy(np.vstack([e.done for e in experiences if e is not None]).astype(np.uint8)).float().to(device)
+        weights = torch.from_numpy(np.vstack(weights)).float().to(device)
+        idxs = torch.from_numpy(np.vstack(idxs)).long().to(device)
+        return (states, actions, rewards, next_states, dones, weights, idxs)
+
+    def update_priorities(self,idxs,priorities):
+        for i, idx in enumerate(idxs):
+            self.memory[idx] = self.memory[idx]._replace(priority=priorities[i])
 
 def hidden_init(layer):
     fan_in = layer.weight.data.size()[0]
@@ -259,7 +312,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """Critic (Value) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1=400, fc2=300):
+    def __init__(self, state_size, action_size, seed, fc1u=400, fc2u=300, atoms=51, vmin=-1, vmax=1):
         """Initialize parameters and build model.
         Params
         ======
@@ -271,12 +324,14 @@ class Critic(nn.Module):
         """
         super(Critic, self).__init__()
         self.seed = torch.manual_seed(seed)
-        self.fc1 = nn.Linear(state_size, fc1)
+        self.fc1 = nn.Linear(state_size, fc1u)
 
-        self.bn1 = nn.BatchNorm1d(fc1)
+        # self.bn1 = nn.BatchNorm1d(fc1)
 
-        self.fc2 = nn.Linear(fc1+action_size, fc2)
-        self.fc3 = nn.Linear(fc2, 1)
+        self.fc2 = nn.Linear(fc1u+action_size, fc2u)
+        self.fc3 = nn.Linear(fc2u, 1)
+        delta = (vmax - vmin) / (atoms - 1)
+        self.register_buffer("supports", torch.arange(vmin, vmax+delta, delta))
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -286,7 +341,8 @@ class Critic(nn.Module):
 
     def forward(self, state, action):
         """Build a critic (value) network that maps (state, action) pairs -> Q-values."""
-        xs = F.relu(self.bn1(self.fc1(state)))
-        x = torch.cat((xs, action),dim=1)
+        # xs = F.relu(self.bn1(self.fc1(state)))
+        xs = F.relu(self.fc1(state))
+        x = torch.cat((xs, action.float()),dim=1)
         x = F.relu(self.fc2(x))
         return self.fc3(x)

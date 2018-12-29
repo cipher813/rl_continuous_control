@@ -5,6 +5,7 @@ This may be fixed in mlagents.envs but have not verified.
 """
 from agents.DDPG import DDPG
 from agents.D4PG import D4PG
+from agents.DDPGplus import DDPGplus
 # from agents.TD3 import TD3
 from util import *
 
@@ -15,16 +16,17 @@ RESULT_PATH = PATH + "results/"
 
 env_dict = {
             # "Reacher20":["unity","Reacher20.app",0.01], # 30.0
-            # "Reacher20":["unity","Reacher_Linux_NoVis2/Reacher.x86_64",30.0],
-            # "Reacher1":["unity","Reacher1.app",30.0], # 30.0
-            "Reacher1":["unity","Reacher_Linux_NoVis1/Reacher.x86_64",30.0],
+            "Reacher20":["unity","Reacher_Linux_NoVis2/Reacher.x86_64",30.0],
+            # "Reacher1":["unity","Reacher1.app",0.01], # 30.0
+            # "Reacher1":["unity","Reacher_Linux_NoVis1/Reacher.x86_64",30.0],
             # "Pendulum":["gym","Pendulum-v0",-2000.0],
-            "BipedalWalker":["gym","BipedalWalker-v2",-300.0] # 300.0
+            "BipedalWalker":["gym","BipedalWalker-v2",300.0] # 300.0
             }
 
 agent_dict = {
-              "D4PG":D4PG,
               "DDPG":DDPG,
+              "DDPGplus":DDPGplus,
+              # "D4PG":D4PG,
               # "TD3":TD3,
              }
 

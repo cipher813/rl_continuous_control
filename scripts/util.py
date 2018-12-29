@@ -10,9 +10,9 @@ import datetime
 import numpy as np
 from collections import deque
 
-def pickle_results(RESULT_PATH, env_name, timestamp,pkl_file):
+def pickle_results(RESULT_PATH, env_name, policy_name, timestamp,pkl_file):
     """ Save results to pickle file """
-    pklpath = RESULT_PATH + f"{env_name}_{timestamp}_ResultDict.pkl"
+    pklpath = RESULT_PATH + f"{env_name}_{policy_name}_{timestamp}_ResultDict.pkl"
     with open(pklpath, 'wb') as handle:
         pickle.dump(pkl_file, handle)
     print(f"Scores pickled at {pklpath}")
@@ -163,8 +163,10 @@ def train_policy(PATH, env_name, platform, env_path, agent_dict, score_threshold
                           "Scores": total_scores,
                           "Runtime":calc_runtime(end-start)
                           }
-        # env.close()
-    pickle_results(RESULT_PATH, env_name, timestamp, result_dict)
+        print(f"Updated Result Dictionary:\n{result_dict}")
+        pickle_results(RESULT_PATH, env_name, policy_name, timestamp, result_dict)
+    # if platform=="unity":
+    #     env.close()
     return scores
 
 def train_envs(PATH, env_dict, agent_dict):
