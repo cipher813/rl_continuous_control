@@ -1,5 +1,6 @@
 import os
 import re
+import gc
 import gym
 import time
 import torch
@@ -122,6 +123,7 @@ def train_policy(PATH, env_name, platform, env_path, agent_dict, score_threshold
     for k,v in agent_dict.items():
         start = time.time()
         policy_name = k
+        print(f"Policy: {policy_name}")
         # if policy_name=="DDPG":
         policy = v(state_size,action_size,num_agents) #max_action,num_agents,learn_freq,, random_seed
         # elif policy_name=="PPO":
@@ -173,6 +175,8 @@ def train_envs(PATH, env_dict, agent_dict):
         platform = v[0]
         env_path = v[1]
         score_threshold = v[2]
+        print(f"Environment: {env_name}")
         scores = train_policy(PATH, env_name, platform, env_path, agent_dict, score_threshold, timestamp)
         result_dict[env_name] = scores
+        gc.collect()
     return result_dict

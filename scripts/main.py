@@ -16,15 +16,15 @@ RESULT_PATH = PATH + "results/"
 env_dict = {
             # "Reacher20":["unity","Reacher20.app",0.01], # 30.0
             # "Reacher20":["unity","Reacher_Linux_NoVis2/Reacher.x86_64",30.0],
-            # "Reacher1":["unity","Reacher1.app",0.01],
+            # "Reacher1":["unity","Reacher1.app",30.0], # 30.0
             "Reacher1":["unity","Reacher_Linux_NoVis1/Reacher.x86_64",30.0],
             # "Pendulum":["gym","Pendulum-v0",-2000.0],
-            "BipedalWalker":["gym","BipedalWalker-v2",300.0] # 300.0
+            "BipedalWalker":["gym","BipedalWalker-v2",-300.0] # 300.0
             }
 
 agent_dict = {
-              "DDPG":DDPG,
               "D4PG":D4PG,
+              "DDPG":DDPG,
               # "TD3":TD3,
              }
 

@@ -333,15 +333,6 @@ class D4PG:
         for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
             target_param.data.copy_(tau*local_param.data + (1.0-tau)*target_param.data)
 
-    # def save(self, filename, directory):
-    #     torch.save(self.actor.state_dict(), '%s/%s_actor.pth' % (directory, filename))
-    #     torch.save(self.critic.state_dict(), '%s/%s_critic.pth' % (directory, filename))
-    #
-    #
-    # def load(self, filename, directory):
-    #     self.actor.load_state_dict(torch.load('%s/%s_actor.pth' % (directory, filename)))
-    #     self.critic.load_state_dict(torch.load('%s/%s_critic.pth' % (directory, filename)))
-
 class OUNoise:
     """Ornstein-Uhlenbeck process."""
 
@@ -464,43 +455,6 @@ class SumTree:
 
         return (idx, self.tree[idx], self.data[dataIdx])
 
-# class ReplayBuffer:
-#     """Fixed-size buffer to store experience tuples."""
-#
-#     def __init__(self, action_size, buffer_size, batch_size, seed):
-#         """Initialize a ReplayBuffer object.
-#         Params
-#         ======
-#             buffer_size (int): maximum size of buffer
-#             batch_size (int): size of each training batch
-#         """
-#         self.action_size = action_size
-#         self.memory = deque(maxlen=buffer_size)  # internal memory (deque)
-#         self.batch_size = batch_size
-#         self.experience = namedtuple("Experience", field_names=["state", "action", "reward", "next_state", "done"])
-#         self.seed = random.seed(seed)
-#
-#     def add(self, state, action, reward, next_state, done):
-#         """Add a new experience to memory."""
-#         e = self.experience(state, action, reward, next_state, done)
-#         self.memory.append(e)
-#
-#     def sample(self):
-#         """Randomly sample a batch of experiences from memory."""
-#         experiences = random.sample(self.memory, k=self.batch_size)
-#
-#         states = torch.from_numpy(np.vstack([e.state for e in experiences if e is not None])).float().to(device)
-#         actions = torch.from_numpy(np.vstack([e.action for e in experiences if e is not None])).float().to(device)
-#         rewards = torch.from_numpy(np.vstack([e.reward for e in experiences if e is not None])).float().to(device)
-#         next_states = torch.from_numpy(np.vstack([e.next_state for e in experiences if e is not None])).float().to(device)
-#         dones = torch.from_numpy(np.vstack([e.done for e in experiences if e is not None]).astype(np.uint8)).float().to(device)
-#
-#         return (states, actions, rewards, next_states, dones)
-#
-#     def __len__(self):
-#         """Return the current size of internal memory."""
-#         return len(self.memory)
-
 def hidden_init(layer):
     fan_in = layer.weight.data.size()[0]
     lim = 1. / np.sqrt(fan_in)
@@ -555,7 +509,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """Critic (Value) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1=400, fc2=300, fc3=300, fc4=300, atoms=51, vmin=-1, vmax=1):
+    def __init__(self, state_size, action_size, seed, fc1=128, fc2=128, fc3=128, atoms=51, vmin=-1, vmax=1):
         """Initialize parameters and build model.
         Params
         ======
@@ -569,10 +523,10 @@ class Critic(nn.Module):
         self.seed = torch.manual_seed(seed)
         self.fc1 = nn.Linear(state_size, fc1)
 
-        # self.bn1 = nn.BatchNorm1d(fc1_units)
+        # self.bn1 = nn.BatchNorm1d(fc1)
 
-        self.fc2 = nn.Linear(fc1+action_size, fc2)
-        self.fc3 = nn.Linear(fc2, atoms)
+        self.fc2 = nn.Linear(fc2+action_size, fc3)
+        self.fc3 = nn.Linear(fc3, atoms)
         delta = (vmax - vmin) / (atoms - 1)
         self.register_buffer("supports", torch.arange(vmin, vmax+delta, delta))
         self.reset_parameters()
@@ -586,13 +540,10 @@ class Critic(nn.Module):
 
     def forward(self, state, action):
         """Build a critic (value) network that maps (state, action) pairs -> Q-values."""
-        xs = F.leaky_relu(self.fc1(state))
-
         # xs = F.relu(self.bn1(self.fc1(state)))
+        xs = F.leaky_relu(self.fc1(state))
         x = torch.cat((xs, action),dim=1)
-
         x = F.leaky_relu(self.fc2(x))
-        # x = F.relu(self.fc2(x))
         return self.fc3(x)
 
     def distr_to_q(self, distr):
