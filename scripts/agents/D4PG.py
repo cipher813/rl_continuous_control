@@ -44,12 +44,12 @@ class D4PG:
         self.action_size = action_size
         self.num_agents = num_agents
         self.learn_every = num_agents # UPDATE_EVERY
-        self.num_learn = num_agents//2 if num_agents > 1 else 1 # N_step
+        self.N_step = num_agents//2 if num_agents > 1 else 1 # N_step
         self.seed = random.seed(random_seed)
         self.GAMMA = GAMMA
 
-        self.rewards_queue = deque(maxlen=self.num_learn)
-        self.states_queue = deque(maxlen=self.num_learn)
+        self.rewards_queue = deque(maxlen=self.N_step)
+        self.states_queue = deque(maxlen=self.N_step)
 
         self.timestep = 0
         self.train_start = 2000
@@ -82,12 +82,13 @@ class D4PG:
         #     self.memory.add(state, action, reward, next_state, done)
 
         self.states_queue.appendleft([state,action])
+        # if self.num_agents>1:
         for i in range(self.num_agents):
-            self.rewards_queue.appendleft(reward[i]*GAMMA**self.num_learn)
+            self.rewards_queue.appendleft(reward[i]*GAMMA**self.N_step)
         for i in range(len(self.rewards_queue)):
             self.rewards_queue[i] = self.rewards_queue[i]/GAMMA
 
-        if len(self.rewards_queue)>=self.num_learn:
+        if len(self.rewards_queue)>=self.N_step:
             temps = self.states_queue.pop()
             state = torch.tensor(temps[0]).float().to(device)
             next_state = torch.tensor(next_state).float().to(device)
@@ -108,7 +109,7 @@ class D4PG:
             self.critic_target.train()
             sum_reward = torch.tensor(sum(self.rewards_queue)).float().unsqueeze(0).to(device)
             done_temp = torch.tensor(done).float().to(device)
-            Q_target_next = self.distr_projection(Q_target_next, sum_reward, done_temp, GAMMA**self.num_learn)
+            Q_target_next = self.distr_projection(Q_target_next, sum_reward, done_temp, GAMMA**self.N_step)
             Q_target_next = -F.log_softmax(Q_expected, dim=1)*Q_target_next
             error = Q_target_next.sum(dim=1).mean().cpu().data
 
@@ -121,8 +122,8 @@ class D4PG:
                 self.states_queue.clear()
                 self.rewards_queue.clear()
 
-        self.timestep = (self.timestep + 1)% self.num_learn
-        if timestep==0:
+        self.timestep = (self.timestep + 1)% self.learn_every
+        if self.timestep==0:
             if self.memory.tree.n_entries > self.train_start:
                 batch_not_ok = True
                 while batch_not_ok:
@@ -283,7 +284,7 @@ class D4PG:
         # Q_targets = rewards + (gamma * Q_targets_next * (1 - dones)) # target_Q
         # Compute critic loss
         Q_targets_next = F.softmax(Q_targets_next,dim=1)
-        Q_targets_next = self.distr_projection(Q_targets_next, rewards, dones, gamma*self.num_learn)
+        Q_targets_next = self.distr_projection(Q_targets_next, rewards, dones, gamma*self.N_step)
         Q_targets_next = -F.log_softmax(Q_expected, dim=1)*Q_targets_next
         critic_loss = Q_targets_next.sum(dim=1).mean()
 
@@ -509,7 +510,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """Critic (Value) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1=128, fc2=128, fc3=128, atoms=51, vmin=-1, vmax=1):
+    def __init__(self, state_size, action_size, seed, fc1u=128, fc2u=128, fc3u=128, atoms=51, vmin=-1, vmax=1):
         """Initialize parameters and build model.
         Params
         ======
@@ -521,12 +522,12 @@ class Critic(nn.Module):
         """
         super(Critic, self).__init__()
         self.seed = torch.manual_seed(seed)
-        self.fc1 = nn.Linear(state_size, fc1)
+        self.fc1 = nn.Linear(state_size, fc1u)
 
-        # self.bn1 = nn.BatchNorm1d(fc1)
+        self.bn = nn.BatchNorm1d(fc1u)
 
-        self.fc2 = nn.Linear(fc2+action_size, fc3)
-        self.fc3 = nn.Linear(fc3, atoms)
+        self.fc2 = nn.Linear(fc1u+action_size, fc2u)
+        self.fc3 = nn.Linear(fc2u, atoms)
         delta = (vmax - vmin) / (atoms - 1)
         self.register_buffer("supports", torch.arange(vmin, vmax+delta, delta))
         self.reset_parameters()
@@ -534,15 +535,22 @@ class Critic(nn.Module):
     def reset_parameters(self):
         self.fc1.weight.data.uniform_(*hidden_init(self.fc1))
         self.fc2.weight.data.uniform_(*hidden_init(self.fc2))
-        self.fc3.weight.data.uniform_(*hidden_init(self.fc3))
-
-        # self.fc3.weight.data.uniform_(-3e-3, 3e-3)
+        self.fc3.weight.data.uniform_(-3e-3, 3e-3)
 
     def forward(self, state, action):
         """Build a critic (value) network that maps (state, action) pairs -> Q-values."""
-        # xs = F.relu(self.bn1(self.fc1(state)))
-        xs = F.leaky_relu(self.fc1(state))
+        # xs = F.leaky_relu(self.fc1(state))
+        # state = state.view(state.size()[0],state.size()[1],1)
+        # print(state.shape)
+        xs = F.leaky_relu(self.bn(self.fc1(state)))
+        # print(xs.shape)
+        # print(xs.shape)
+        # print(xs.size())
+        # xs = xs.view(xs.size()[1],xs.size()[0],4)
+        # print(xs.shape)
+        # print(xs.shape, action.shape)
         x = torch.cat((xs, action),dim=1)
+        # print(x.shape)
         x = F.leaky_relu(self.fc2(x))
         return self.fc3(x)
 
