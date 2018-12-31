@@ -23,18 +23,9 @@ def calc_runtime(seconds):
     s = int(round(seconds - m*60,0))
     return "{:02d}:{:02d}:{:02d}".format(h,m,s)
 
-# def step_unity(env, action):
-#     state = env_info.vector_observations[0]
-#     action = agent.act(state,e)
-#     env_info = env.step(action)[brain_name]        # send the action to the environment
-#     next_state = env_info.vector_observations[0]
-#     reward = env_info.rewards[0]                   # get the reward
-#     done = env_info.local_done[0]
-#     return next_state, reward, done # state, action, env_info
-
-def prep_unity(PATH, env_path):
+def train_unity_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t, num_agents):
+    total_scores = []
     from unityagents import UnityEnvironment
-    # from mlagents.envs import UnityEnvironment
     env_path = PATH + f"data/{env_path}"
     env = UnityEnvironment(file_name=env_path)
     brain_name = env.brain_names[0]
@@ -48,60 +39,110 @@ def prep_unity(PATH, env_path):
     print(f"The state for the first agent looks like:\n{states[0]}")
     action_size = brain.vector_action_space_size
     print(f"Size of each action: {action_size}")
-    # max_action = float(action_size)
-    return env, brain_name, brain, env_info, num_agents, states, state_size, action_size
+    policy = policy(state_size,action_size,num_agents)
+    for i_episode in range(1, n_episodes+1):
+        env_info = env.reset(train_mode=True)[brain_name]
+        states = env_info.vector_observations
+        scores = np.zeros(num_agents)
+        policy.reset()
+        for t in range(max_t):
+            actions = policy.act(states)
+            env_info = env.step(actions)[brain_name]        # send the action to the environment
+            next_states = env_info.vector_observations
+            rewards = env_info.rewards                   # get the reward
+            dones = env_info.local_done
+            policy.step(states, actions, rewards, next_states, dones, t)
+            states = next_states
+            scores += env_info.rewards
+            if np.any(dones):
+                break
+        score_length = len(total_scores) if len(total_scores)<100 else 100
+        mean_score = np.mean(scores)
+        min_score = np.min(scores)
+        max_score = np.max(scores)
+        total_scores.append(mean_score)
+        total_average_score = np.mean(total_scores[-score_length:])
+        end = time.time()
+        print(f'\rEpisode {i_episode}\tScore TAS/Mean/Max/Min: {total_average_score:.2f}/{mean_score:.2f}/{max_score:.2f}/{min_score:.2f}\t{calc_runtime(end-start)}',end=" ")
+        if i_episode % 20 == 0 or total_average_score>=score_threshold:
+            fap = PATH + f'results/{env_name}_{timestamp}_checkpoint_actor.pth'
+            torch.save(policy.actor.state_dict(), fap)
+            fcp = PATH + f'results/{env_name}_{timestamp}_checkpoint_critic.pth'
+            torch.save(policy.critic.state_dict(), fcp)
+            print(f'\rEpisode {i_episode}\tScore TAS/Mean/Max/Min: {total_average_score:.2f}/{mean_score:.2f}/{max_score:.2f}/{min_score:.2f}\t{calc_runtime(end-start)}')
+        if total_average_score>score_threshold:
+            print(f"Solved in {i_episode} and {calc_runtime(end-start)}")
+            break
+        # total_scores, finished = check_scores(PATH, env_name, policy, timestamp, i_episode, scores, total_scores, score_threshold, start)
+        # if finished==True:
+        #     break
+    return total_scores
 
-def prep_gym(PATH, env_path):
+def train_gym_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t,num_agents):
+    total_scores = []
     import gym
     env = gym.make(env_path)
     state_size = env.observation_space.shape[0]
     action_size = env.action_space.shape[0]
-    return env, state_size, action_size
+    policy = policy(state_size,action_size,num_agents)
+    for i_episode in range(1, n_episodes+1):
+        states = env.reset()
+        scores = np.zeros(num_agents)
+        policy.reset()
+        for t in range(max_t):
+            actions = policy.act(states)
+            next_states, rewards, dones, _ = env.step(actions)
+            policy.step(states, actions, rewards, next_states, dones, t)
+            states = next_states
+            scores += rewards
+            if np.any(dones):
+                break
 
-def step_unity(env, brain_name, num_agents, policy, max_t):
-    env_info = env.reset(train_mode=True)[brain_name]
-    states = env_info.vector_observations
-    scores = np.zeros(num_agents)
-    policy.reset()
-    # while True:
-    for t in range(max_t):
-        actions = policy.act(states)
-        env_info = env.step(actions)[brain_name]        # send the action to the environment
-        next_states = env_info.vector_observations
-        rewards = env_info.rewards                   # get the reward
-        dones = env_info.local_done
-        policy.step(states, actions, rewards, next_states, dones, t)
-        states = next_states
-        scores += env_info.rewards
-
-        if np.any(dones):
+        score_length = len(total_scores) if len(total_scores)<100 else 100
+        mean_score = np.mean(scores)
+        min_score = np.min(scores)
+        max_score = np.max(scores)
+        total_scores.append(mean_score)
+        total_average_score = np.mean(total_scores[-score_length:])
+        end = time.time()
+        print(f'\rEpisode {i_episode}\tScore TAS/Mean/Max/Min: {total_average_score:.2f}/{mean_score:.2f}/{max_score:.2f}/{min_score:.2f}\t{calc_runtime(end-start)}',end=" ")
+        if i_episode % 20 == 0 or total_average_score>=score_threshold:
+            fap = PATH + f'results/{env_name}_{timestamp}_checkpoint_actor.pth'
+            torch.save(policy.actor.state_dict(), fap)
+            fcp = PATH + f'results/{env_name}_{timestamp}_checkpoint_critic.pth'
+            torch.save(policy.critic.state_dict(), fcp)
+            print(f'\rEpisode {i_episode}\tScore TAS/Mean/Max/Min: {total_average_score:.2f}/{mean_score:.2f}/{max_score:.2f}/{min_score:.2f}\t{calc_runtime(end-start)}')
+        if total_average_score>score_threshold:
+            print(f"Solved in {i_episode} and {calc_runtime(end-start)}")
             break
-    return scores
+        # total_scores, finished = check_scores(PATH, env_name, policy, timestamp, i_episode, scores, total_scores,score_threshold, start)
+        # if finished==True:
+        #     break
+    return total_scores
 
-def step_gym(env, num_agents, policy, max_t):
-    states = env.reset()
-    # env_info = env.reset(train_mode=True)[brain_name]
-    # states = env_info.vector_observations
-    scores = np.zeros(num_agents)
-    policy.reset()
-    # while True:
-    for t in range(max_t):
-        actions = policy.act(states)
-        next_states, rewards, dones, _ = env.step(actions)
-        # env_info = env.step(actions)[brain_name]        # send the action to the environment
-        # next_states = env_info.vector_observations
-        # rewards = env_info.rewards                   # get the reward
-        # dones = env_info.local_done
-        policy.step(states, actions, rewards, next_states, dones, t)
-        states = next_states
-        scores += rewards
+# def check_scores(PATH, env_name, policy, timestamp, i_episode, scores, total_scores, score_threshold, start):
+#     # finished = False
+#     score_length = len(total_scores) if len(total_scores)<100 else 100
+#     mean_score = np.mean(scores)
+#     min_score = np.min(scores)
+#     max_score = np.max(scores)
+#     total_scores.append(mean_score)
+#     total_average_score = np.mean(total_scores[-score_length:])
+#     end = time.time()
+#     print(f'\rEpisode {i_episode}\tScore TAS/Mean/Max/Min: {total_average_score:.2f}/{mean_score:.2f}/{max_score:.2f}/{min_score:.2f}\t{calc_runtime(end-start)}',end=" ")
+#     if i_episode % 20 == 0 or total_average_score>=score_threshold:
+#         fap = PATH + f'results/{env_name}_{timestamp}_checkpoint_actor.pth'
+#         torch.save(policy.actor.state_dict(), fap)
+#         fcp = PATH + f'results/{env_name}_{timestamp}_checkpoint_critic.pth'
+#         torch.save(policy.critic.state_dict(), fcp)
+#         print(f'\rEpisode {i_episode}\tScore TAS/Mean/Max/Min: {total_average_score:.2f}/{mean_score:.2f}/{max_score:.2f}/{min_score:.2f}\t{calc_runtime(end-start)}')
+#     if total_average_score>score_threshold:
+#         print(f"Solved in {i_episode} and {calc_runtime(end-start)}")
+#         finished = True
+#     return total_scores, finished
 
-        if np.any(dones):
-            break
-    return scores
-
-def train_policy(PATH, env_name, platform, env_path, agent_dict, score_threshold, timestamp,
-                n_episodes=20000, max_t=1000, num_agents=1): #, learn_every=20, random_seed=7
+def train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_threshold,
+                 timestamp,train_mode,n_episodes=10000, max_t=1000, num_agents=1):
     """Run policy train.
 
     Arguments:
@@ -113,72 +154,59 @@ def train_policy(PATH, env_name, platform, env_path, agent_dict, score_threshold
     num_learn (int): number of times to update network per every timestep increment (ie learn_every)
     score_threshold (float): once training reaches this average, break train
     """
-    RESULT_PATH = PATH + "results/"
+    start = time.time()
+    # RESULT_PATH = PATH + "results/"
     result_dict = {}
+    # finished = False
+    # i_episode = 0
+    # while finished == False and i_episode < n_episodes:
     if platform=="unity":
-        env, brain_name, brain, env_info, num_agents, states, state_size, action_size = prep_unity(PATH, env_path)
+        scores = train_unity_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t, num_agents)
+    elif platform=="gym":
+        scores = train_gym_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t, num_agents)
     else:
-        env, state_size, action_size = prep_gym(PATH, env_path)
-    for k,v in agent_dict.items():
-        start = time.time()
-        policy_name = k
-        print(f"Policy: {policy_name}")
-        # if policy_name=="DDPG":
-        policy = v(state_size,action_size,num_agents) #max_action,num_agents,learn_freq,, random_seed
-        # elif policy_name=="PPO":
-        #     policy = v(policy,clip_param,ppo_epoch,num_mini_batch,value_loss_coef,entropy_coef)
-        # total_scores_deque = deque(maxlen=100)
-        # else:
-        #     print("Load a valid policy.")
-        total_scores = []
-        # max_score = -np.Inf
-        for i_episode in range(1, n_episodes+1):
+        print("Platform must be either 'unity' or 'gym'.")
+        # break
+    end = time.time()
+    result_dict[(env_name, policy_name)] = {
+                      "Scores": scores,
+                      "Runtime":calc_runtime(end-start)
+                      }
+    print(f"Updated Result Dictionary:\n{result_dict}")
+    pklpath = PATH + f"results/{timestamp}_{env_name}_ResultDict.pkl"
+    pickle_results(pklpath, result_dict)
+    # result_dict[(env_name,agent_name)] = scores
+    gc.collect()
+    return result_dict
 
-            if platform=="unity":
-                scores = step_unity(env, brain_name, num_agents, policy, max_t)
-            else:
-                scores = step_gym(env, num_agents, policy, max_t)
-
-            score_length = len(total_scores) if len(total_scores)<100 else 100
-            mean_score = np.mean(scores)
-            min_score = np.min(scores)
-            max_score = np.max(scores)
-            # total_scores_deque.append(mean_score)
-            total_scores.append(mean_score)
-            total_average_score = np.mean(total_scores[-score_length:])
-            end = time.time()
-            print(f'\rEpisode {i_episode}\tScore TAS/Mean/Max/Min: {total_average_score:.2f}/{mean_score:.2f}/{max_score:.2f}/{min_score:.2f}\t{calc_runtime(end-start)}',end=" ")
-            if i_episode % 20 == 0 or total_average_score>=score_threshold:
-                fap = RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_actor.pth'
-                torch.save(policy.actor.state_dict(), fap)
-                fcp = RESULT_PATH + f'{env_name}_{timestamp}_checkpoint_critic.pth'
-                torch.save(policy.critic.state_dict(), fcp)
-                print(f'\rEpisode {i_episode}\tScore TAS/Mean/Max/Min: {total_average_score:.2f}/{mean_score:.2f}/{max_score:.2f}/{min_score:.2f}\t{calc_runtime(end-start)}')
-            if total_average_score>score_threshold:
-                print(f"Solved in {i_episode} and {calc_runtime(end-start)}")
-                break
-        end = time.time()
-        result_dict[(env_name, policy_name)] = {
-                          "Scores": total_scores,
-                          "Runtime":calc_runtime(end-start)
-                          }
-        print(f"Updated Result Dictionary:\n{result_dict}")
-        pklpath = RESULT_PATH + f"{timestamp}_{env_name}_ResultDict.pkl"
-        pickle_results(pklpath, result_dict)
-    # if platform=="unity":
-    #     env.close()
-    return scores
-
-def train_envs(PATH, env_dict, agent_dict):
+def train_envs(PATH, env_dict, agent_dict, train_mode):
     timestamp = re.sub(r"\D","",str(datetime.datetime.now()))[:12]
     result_dict = {}
     for k,v in env_dict.items():
-        env_name = k
-        platform = v[0]
-        env_path = v[1]
-        score_threshold = v[2]
-        print(f"Environment: {env_name}")
-        scores = train_policy(PATH, env_name, platform, env_path, agent_dict, score_threshold, timestamp)
-        result_dict[env_name] = scores
-        gc.collect()
-    return result_dict
+        if v[2]==train_mode:
+            env_name = k
+            platform = v[0]
+            env_path = v[1]
+            score_threshold = v[3]
+            for k, v in agent_dict.items():
+                start = time.time()
+                policy_name = k
+                print(f"Environment: {env_name}\tPolicy: {policy_name}")
+                policy = v[0]
+                mode = v[1] # single, multi or both
+                if mode==train_mode or mode=="both":
+                    if "DDPG" in policy_name or "D4PG" in policy_name:
+                        results = train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_threshold, timestamp,train_mode)
+                    # elif agent_name in ["TD3"]:
+                    #     pass
+            #         end = time.time()
+            #         result_dict[(env_name, policy_name)] = {
+            #                           "Scores": scores,
+            #                           "Runtime":calc_runtime(end-start)
+            #                           }
+            # print(f"Updated Result Dictionary:\n{result_dict}")
+            # pklpath = PATH + f"results/{timestamp}_{env_name}_ResultDict.pkl"
+            # pickle_results(pklpath, result_dict)
+            # # result_dict[(env_name,agent_name)] = scores
+            # gc.collect()
+    return results
