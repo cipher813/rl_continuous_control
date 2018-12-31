@@ -42,7 +42,7 @@ class DDPGplus(DDPG):
             action_size (int): dimension of each action
             random_seed (int): random seed
         """
-        super(DDPGplus2, self).__init__(state_size, action_size, num_agents)
+        super(DDPGplus, self).__init__(state_size, action_size, num_agents)
         # self.state_size = state_size
         # self.action_size = action_size
         # self.num_agents = num_agents

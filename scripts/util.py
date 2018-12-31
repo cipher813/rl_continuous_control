@@ -73,9 +73,11 @@ def train_unity_ddpg(PATH, env_name, platform, env_path, policy, score_threshold
         if total_average_score>score_threshold:
             print(f"Solved in {i_episode} and {calc_runtime(end-start)}")
             break
-        # total_scores, finished = check_scores(PATH, env_name, policy, timestamp, i_episode, scores, total_scores, score_threshold, start)
-        # if finished==True:
-        #     break
+    # env.reset()
+    # env.close()
+    seconds = 30
+    print(f"Sleeping for {seconds} seconds to close the damn unity environment...")
+    time.sleep(seconds)
     return total_scores
 
 def train_gym_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t,num_agents):
@@ -115,31 +117,7 @@ def train_gym_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,t
         if total_average_score>score_threshold:
             print(f"Solved in {i_episode} and {calc_runtime(end-start)}")
             break
-        # total_scores, finished = check_scores(PATH, env_name, policy, timestamp, i_episode, scores, total_scores,score_threshold, start)
-        # if finished==True:
-        #     break
     return total_scores
-
-# def check_scores(PATH, env_name, policy, timestamp, i_episode, scores, total_scores, score_threshold, start):
-#     # finished = False
-#     score_length = len(total_scores) if len(total_scores)<100 else 100
-#     mean_score = np.mean(scores)
-#     min_score = np.min(scores)
-#     max_score = np.max(scores)
-#     total_scores.append(mean_score)
-#     total_average_score = np.mean(total_scores[-score_length:])
-#     end = time.time()
-#     print(f'\rEpisode {i_episode}\tScore TAS/Mean/Max/Min: {total_average_score:.2f}/{mean_score:.2f}/{max_score:.2f}/{min_score:.2f}\t{calc_runtime(end-start)}',end=" ")
-#     if i_episode % 20 == 0 or total_average_score>=score_threshold:
-#         fap = PATH + f'results/{env_name}_{timestamp}_checkpoint_actor.pth'
-#         torch.save(policy.actor.state_dict(), fap)
-#         fcp = PATH + f'results/{env_name}_{timestamp}_checkpoint_critic.pth'
-#         torch.save(policy.critic.state_dict(), fcp)
-#         print(f'\rEpisode {i_episode}\tScore TAS/Mean/Max/Min: {total_average_score:.2f}/{mean_score:.2f}/{max_score:.2f}/{min_score:.2f}\t{calc_runtime(end-start)}')
-#     if total_average_score>score_threshold:
-#         print(f"Solved in {i_episode} and {calc_runtime(end-start)}")
-#         finished = True
-#     return total_scores, finished
 
 def train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_threshold,
                  timestamp,train_mode,n_episodes=10000, max_t=1000, num_agents=1):
@@ -161,22 +139,22 @@ def train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_th
     # i_episode = 0
     # while finished == False and i_episode < n_episodes:
     if platform=="unity":
-        scores = train_unity_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t, num_agents)
+        total_scores = train_unity_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t, num_agents)
     elif platform=="gym":
-        scores = train_gym_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t, num_agents)
+        total_scores = train_gym_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t, num_agents)
     else:
         print("Platform must be either 'unity' or 'gym'.")
         # break
-    end = time.time()
-    result_dict[(env_name, policy_name)] = {
-                      "Scores": scores,
-                      "Runtime":calc_runtime(end-start)
-                      }
-    print(f"Updated Result Dictionary:\n{result_dict}")
-    pklpath = PATH + f"results/{timestamp}_{env_name}_ResultDict.pkl"
-    pickle_results(pklpath, result_dict)
-    # result_dict[(env_name,agent_name)] = scores
-    gc.collect()
+    # end = time.time()
+    # result_dict[(env_name, policy_name)] = {
+    #                   "Scores": total_scores,
+    #                   "Runtime":calc_runtime(end-start)
+    #                   }
+    # print(f"Updated Result Dictionary:\n{result_dict}")
+    # pklpath = PATH + f"results/{timestamp}_{env_name}_ResultDict.pkl"
+    # pickle_results(pklpath, result_dict)
+    # # result_dict[(env_name,agent_name)] = scores
+    # gc.collect()
     return result_dict
 
 def train_envs(PATH, env_dict, agent_dict, train_mode):
@@ -196,17 +174,15 @@ def train_envs(PATH, env_dict, agent_dict, train_mode):
                 mode = v[1] # single, multi or both
                 if mode==train_mode or mode=="both":
                     if "DDPG" in policy_name or "D4PG" in policy_name:
-                        results = train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_threshold, timestamp,train_mode)
-                    # elif agent_name in ["TD3"]:
-                    #     pass
-            #         end = time.time()
-            #         result_dict[(env_name, policy_name)] = {
-            #                           "Scores": scores,
-            #                           "Runtime":calc_runtime(end-start)
-            #                           }
-            # print(f"Updated Result Dictionary:\n{result_dict}")
-            # pklpath = PATH + f"results/{timestamp}_{env_name}_ResultDict.pkl"
-            # pickle_results(pklpath, result_dict)
-            # # result_dict[(env_name,agent_name)] = scores
-            # gc.collect()
-    return results
+                        total_scores = train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_threshold, timestamp,train_mode)
+                    end = time.time()
+                    result_dict[(env_name, policy_name)] = {
+                                      "Scores": total_scores,
+                                      "Runtime":calc_runtime(end-start)
+                                      }
+                    print(f"Updated Result Dictionary:\n{result_dict}")
+                    pklpath = PATH + f"results/{timestamp}_{env_name}_ResultDict.pkl"
+                    pickle_results(pklpath, result_dict)
+                    # result_dict[(env_name,agent_name)] = scores
+                    gc.collect()
+    return result_dict

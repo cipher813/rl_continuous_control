@@ -16,7 +16,7 @@ RESULT_PATH = PATH + "results/"
 
 # Number of agents to train.  Must be "single" or "multi."
 # BUG cannot run more than one unity environment in same loop (so cannot be "both")
-TRAIN_MODE = "multi"
+TRAIN_MODE = "single"
 
 env_dict = {
             "Reacher20":["unity","Reacher20.app","multi",-30.0], # 30.0
@@ -27,9 +27,11 @@ env_dict = {
             "BipedalWalker":["gym","BipedalWalker-v2","single",-300.0] # 300.0
             }
 
+# BUG cannot run more than one agent in a single unity environment in same loop
+# per open issue at https://github.com/Unity-Technologies/ml-agents/issues/1167
 agent_dict = {
               "DDPG":[DDPG,"both"],
-              # "DDPGplus":[DDPGplus,"both"],
+              "DDPGplus":[DDPGplus,"both"],
               # "D4PG":[D4PG,"single"],
               # "TD3":[TD3,"both"]
              }
