@@ -10,7 +10,7 @@ from agents.TD3 import TD3
 from util import *
 
 # PATH = "/Volumes/BC_Clutch/Dropbox/DeepRLND/rl_continuous_control/"
-# PATH = "/home/cipher813/rl_continuous_control/"
+PATH = "/home/cipher813/rl_continuous_control/"
 # PATH = "/home/bcm822_gmail_com/rl_continuous_control/"
 RESULT_PATH = PATH + "results/"
 
