@@ -1,3 +1,7 @@
+"""
+Code inspired by DDPG implmentation at
+https://github.com/partha746/DRLND_P2_Reacher_EnV
+"""
 import numpy as np
 import random
 import copy
@@ -17,8 +21,6 @@ TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 5e-4         # learning rate of the actor
 LR_CRITIC = 3e-3        # learning rate of the critic
 WEIGHT_DECAY = 0.#0.01     # L2 weight decay
-# LEARN_EVERY = 20
-# NUM_LEARN = 10
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -44,13 +46,11 @@ class DDPG:
         # Actor Network (w/ Target Network)
         self.actor = Actor(state_size, action_size, random_seed).to(device) #max_action,
         self.actor_target = Actor(state_size, action_size, random_seed).to(device) #max_action,
-        # self.actor_target.load_state_dict(self.actor.state_dict())
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=LR_ACTOR)
 
         # Critic Network (w/ Target Network)
         self.critic = Critic(state_size, action_size, random_seed).to(device)
         self.critic_target = Critic(state_size, action_size, random_seed).to(device)
-        # self.critic_target.load_state_dict(self.critic.state_dict())
         self.critic_optimizer = optim.Adam(self.critic.parameters(), lr=LR_CRITIC, weight_decay=WEIGHT_DECAY)
 
         # Noise process
@@ -77,8 +77,6 @@ class DDPG:
 
     def act(self, state, add_noise=True): # act
         """Returns actions for given state as per current policy."""
-        # state = torch.FloatTensor(state.reshape(1, -1)).to(device)
-        # return self.actor(state).cpu().data.numpy().flatten()
         state = torch.from_numpy(state).float().to(device)
         self.actor.eval()
         with torch.no_grad():

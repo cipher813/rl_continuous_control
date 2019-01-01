@@ -74,10 +74,10 @@ def train_unity_ddpg(PATH, env_name, platform, env_path, policy, score_threshold
             print(f"Solved in {i_episode} and {calc_runtime(end-start)}")
             break
     # env.reset()
-    # env.close()
-    seconds = 30
-    print(f"Sleeping for {seconds} seconds to close the damn unity environment...")
-    time.sleep(seconds)
+    env.close()
+    # seconds = 30
+    # print(f"Sleeping for {seconds} seconds to close the damn unity environment...")
+    # time.sleep(seconds)
     return total_scores
 
 def train_gym_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t,num_agents):
@@ -166,6 +166,7 @@ def train_envs(PATH, env_dict, agent_dict, train_mode):
             platform = v[0]
             env_path = v[1]
             score_threshold = v[3]
+            print(f"Train Mode: {v[2].title()}-Agent")
             for k, v in agent_dict.items():
                 start = time.time()
                 policy_name = k
