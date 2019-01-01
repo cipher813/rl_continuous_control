@@ -42,9 +42,9 @@ To set up the python (conda) environment, in the root directory, type:
 
 This requires installation of [OpenAI Gym](https://github.com/openai/gym) and Unity's [ML-Agents](https://github.com/Unity-Technologies/ml-agents).   
 
-In the root directory, run `python setup.py` to set up directories.  
+In the root directory, run `python setup.py` to set up directories and download specified environments.  When running this file, make sure you have the full path to your root repo folder readily available (and end the input with a "/").
 
-Review and download the environment based on your system and specifications from the project repo [here](https://github.com/udacity/deep-reinforcement-learning/tree/master/p2_continuous-control).  Save this in folder "data/"
+If you need to further review and access environment implementation, visit the project repo [here](https://github.com/udacity/deep-reinforcement-learning/tree/master/p2_continuous-control).
 
 <a name="model"></a>
 ## The Model
@@ -62,11 +62,10 @@ Contains functions to train in Unity and OpenAI environments, and to chart resul
 [agents](https://github.com/cipher813/rl_continuous_control/tree/master/scripts) folder
 Contains agent classes as specified policies.  See [report.md](https://github.com/cipher813/rl_continuous_control/blob/master/report.md) for additional details on agent implementations.
 
-To train the agent, in the command line run:
+To train the agent, first open main.py in your favorite text editor (ie `nano main.py` or `vi main.py`).  Make sure the path to the root repo folder is correct and that the proper environments and agents (policies) are selected.  Then, in the command line run:
 
 `source activate drlnd` # to activate python (conda) environment
-`python main.py` # to train the environment and agent (policy) based on configuration specified in main.py  
-
+`python main.py` # to train the environment and agent (policy)
 
 ### Notebooks
 

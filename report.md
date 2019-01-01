@@ -33,6 +33,8 @@ In this project, we explored a variety of policies to solve this continuous stat
 
 **DDPG**
 
+DDPG was introduced by DeepMind in 2016 as an adaptation of Deep Q-Learning (DQN) to the continuous action domain.  The algorithm is described as an "actor-critic, model-free algorithm based on the deterministic policy gradient that can operate over continuous action spaces."  While DQN solves problems with high-dimensional observation (state) spaces, it can only handle discrete, low-dimensional action spaces.  
+
 For the multi-agent implementation, we can [share experience amongst agents to accelerate learning](https://ai.googleblog.com/2016/10/how-robots-can-acquire-new-skills-from.html).  We do this by using the same memory ReplayBuffer for all agents.
 
 **D4PG**
@@ -46,8 +48,23 @@ For the multi-agent implementation, we can [share experience amongst agents to a
 <a name="hyperparameters"></a>
 ## Hyperparameters
 
-Hyperparameters used in this implementation include:
-[xxx]
+Hyperparameters are found in the same file as the implementation in which it is deployed.  For [DDPG](https://github.com/cipher813/rl_continuous_control/blob/master/scripts/agents/DDPG.py), key hyperparameters include:
+
+**Buffer Size.**  The ReplayBuffer memory size, as in the number of experiences that are remembered.   
+
+**Batch Size.**  The size of each training batch sampled at a time.    
+
+**Alpha.**  Used in prioritized replay implementations as level of prioritization (alpha=0 is uniform).  
+
+**Beta.**  Used in prioritized replay implementations, importance-sampling weight to control the degree weights affect learning.   
+
+**Gamma.**  Discount factor for discounting past experiences (most recent experiences more highly rewarded as in less discount is applied).  
+
+**Tau.**  For soft update of target parameters.  
+
+**Learning Rate (Actor and Critic).**  Learning rates of actor and critic.  
+
+**Weight Decay.**  L2 weight decay (not used with value of 0.)
 
 <a name="network"></a>
 # Neural Network Architecture
