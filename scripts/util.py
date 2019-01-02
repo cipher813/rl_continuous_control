@@ -134,7 +134,7 @@ def train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_th
     """
     start = time.time()
     # RESULT_PATH = PATH + "results/"
-    result_dict = {}
+    # result_dict = {}
     # finished = False
     # i_episode = 0
     # while finished == False and i_episode < n_episodes:
