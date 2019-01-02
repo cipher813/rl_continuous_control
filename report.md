@@ -73,11 +73,17 @@ Hyperparameters are found in the same file as the implementation in which it is 
 <a name="network"></a>
 # Neural Network Architecture
 
+An actor-critic agent uses function approximation to learn both a policy (actor) and a value function (critic which learns to evaluate V<sub>&pi;</sub> using TD estimate).  The algorithm runs as follows:
+1. input state into actor and output the distribution over actions to take in that state &pi;(a|s;&theta;<sub>&pi;</sub>), returning (s, a, r, s').
+2. train critic using TD estimate of r + &gamma;V(s'; &theta;<sub>v</sub>) to obtain state function of policy &pi; V(s;&theta;<sub>v</sub>).
+3. use critic to calculate advantage function A(s,a) = r + &gamma;V(s';theta<sub>v</sub>) - V(s;&theta;<sub>v</sub>)
+4. Train actor using calculated advantage as baseline.  
+
 The DDPG algorithm utilizes a pair of neural networks, for each the actor and critic.  Common to both are a three layer neural network, receiving the state size of 33 variables corresponding to position, rotation, velocity and angular velocities of the arm as input.  The two layers are made up of 400 and 300 nodes.  Adam is used as the optimizer, and ReLU is used as the per-layer activations.  
 
-The **actor network** uses a tanh output layer mapping to action size vector of 4 numbers, corresponding to torque applicable to two joints, where each number is between -1 and 1.  
+The **actor network** uses a tanh output layer mapping to distribution over action size vector of 4 numbers, corresponding to torque applicable to two joints, where each number is between -1 and 1.  
 
-The **critic network** is batch normalized and outputs a single value.
+The **critic network** is batch normalized and outputs a single value state policy function.
 
 <a name="nextsteps"></a>
 # Next Steps
