@@ -84,7 +84,11 @@ The algorithms used in this project were inspired by a variety of sources and
 authors, including implementations from the following github handles:
 
 [Udacity](https://github.com/udacity/deep-reinforcement-learning)
+
 [Kinwo](https://github.com/kinwo/deeprl-continuous-control)
+
 [partha746](https://github.com/partha746/DRLND_P2_Reacher_EnV)
+
 [kelvin84hk](https://github.com/kelvin84hk/DRLND_P2_Continuous_Control/)
+
 [sperazza](https://github.com/sperazza/MultiAgentDeepRL/)

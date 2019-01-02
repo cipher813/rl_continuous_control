@@ -1,8 +1,7 @@
 """
 Code inspired by DDPG implmentation at
-https://github.com/sperazza/MultiAgentDeepRL/
+https://github.com/partha746/DRLND_P2_Reacher_EnV
 """
-
 import numpy as np
 import random
 import copy
@@ -59,20 +58,6 @@ class DDPG:
 
         # Replay memory
         self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
-
-        self.scheduler_actor = torch.optim.lr_scheduler.StepLR(self.actor_optimizer, step_size=1, gamma=0.5)
-        self.scheduler_critic = torch.optim.lr_scheduler.StepLR(self.critic_optimizer, step_size=1, gamma=0.5)
-
-        self.deep_copy(self.actor_target, self.actor)
-        self.deep_copy(self.critic_target, self.critic)
-
-    def lr_step(self):
-        self.scheduler_actor.step()
-        self.scheduler_critic.step()
-
-    def deep_copy(self, target, source):
-        for target_param, source_param in zip(target.parameters(), source.parameters()):
-            target_param.data.copy_(source_param.data)
 
     def step(self, state, action, reward, next_state, done, timestep, alpha=ALPHA, beta=BETA):
         """Save experience in replay memory, and use random sample from buffer to learn."""
@@ -238,7 +223,7 @@ def hidden_init(layer):
 class Actor(nn.Module):
     """Actor (Policy) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1u=600, fc2u=300): #max_action,
+    def __init__(self, state_size, action_size, seed, fc1=400, fc2=300): #max_action,
         """Initialize parameters and build model.
         Params
         ======
@@ -250,12 +235,12 @@ class Actor(nn.Module):
         """
         super(Actor, self).__init__()
         self.seed = torch.manual_seed(seed)
-        self.fc1 = nn.Linear(state_size, fc1u)
-        self.do1 = nn.Dropout(0.2)
-        self.bn1 = nn.BatchNorm1d(fc1u)
-        self.fc2 = nn.Linear(fc1u,fc2u)
-        self.bn2 = nn.BatchNorm1d(fc2u)
-        self.fc3 = nn.Linear(fc2u, action_size)
+        self.fc1 = nn.Linear(state_size, fc1)
+
+        # self.bn1 = nn.BatchNorm1d(fc1_units) # removing for gym
+
+        self.fc2 = nn.Linear(fc1,fc2)
+        self.fc3 = nn.Linear(fc2, action_size)
         # self.max_action = max_action
         self.reset_parameters()
 
@@ -267,22 +252,14 @@ class Actor(nn.Module):
     def forward(self, state):
         """Build an actor (policy) network that maps states -> actions."""
         # x = F.relu(self.bn1(self.fc1(state)))
-        x = self.fc1(state)
-        x = self.bn1(x)
-        x = F.tanh(x)
-        x = self.do1(x)
-
-        x = self.fc2(x)
-        x = self.bn2(x)
-        x = F.tanh(x)
-
-        x = self.fc3(x)
-        return F.tanh(x)
+        x = F.relu(self.fc1(state))
+        x = F.relu(self.fc2(x))
+        return F.tanh(self.fc3(x))
 
 class Critic(nn.Module):
     """Critic (Value) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1u=600, fc2u=300):
+    def __init__(self, state_size, action_size, seed, fc1=400, fc2=300):
         """Initialize parameters and build model.
         Params
         ======
@@ -294,11 +271,12 @@ class Critic(nn.Module):
         """
         super(Critic, self).__init__()
         self.seed = torch.manual_seed(seed)
-        self.fc1 = nn.Linear(state_size, fc1u)
-        self.bn1= nn.BatchNorm1d(fc1u)
-        self.fc2 = nn.Linear(fc1u + action_size, fc2u)
-        self.do1 = nn.Dropout(0.2)
-        self.fc3 = nn.Linear(fc2u, 1)
+        self.fc1 = nn.Linear(state_size, fc1)
+
+        self.bn1 = nn.BatchNorm1d(fc1)
+
+        self.fc2 = nn.Linear(fc1+action_size, fc2)
+        self.fc3 = nn.Linear(fc2, 1)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -308,12 +286,7 @@ class Critic(nn.Module):
 
     def forward(self, state, action):
         """Build a critic (value) network that maps (state, action) pairs -> Q-values."""
-        xs = self.fc1(state)
-        xs = self.bn1(xs)
-        xs = F.relu(xs)
-
+        xs = F.relu(self.bn1(self.fc1(state)))
         x = torch.cat((xs, action),dim=1)
-        x = self.fc2(x)
-        x = F.relu(x)
-        x = self.do1(x)
+        x = F.relu(self.fc2(x))
         return self.fc3(x)
