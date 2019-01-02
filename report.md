@@ -29,7 +29,7 @@ For further information, see Udacity's [project github repo](https://github.com/
 <a name="algorithm"></a>
 ## The Algorithm
 
-In this project, we explored a variety of policies to solve this continuous state space environment, including Deep Deterministic Policy Gradient [DDPG](https://arxiv.org/abs/1509.02971), Distributed Distributional Deep Deterministic Policy Gradient [D4PG](https://arxiv.org/pdf/1804.08617.pdf), Poximal Policy Optimization [PPO](https://arxiv.org/pdf/1707.06347.pdf) and Twin Delayed Deep Deterministic Policy Gradients [TD3](https://arxiv.org/abs/1802.09477). We will use DDPG for our base implementation, but work in progress of the remaining policies are also available in this repo.  
+In this project, we explored a variety of policies to solve this continuous state space environment, including Deep Deterministic Policy Gradient ([DDPG](https://arxiv.org/abs/1509.02971)), Distributed Distributional Deep Deterministic Policy Gradient ([D4PG](https://arxiv.org/pdf/1804.08617.pdf)), Poximal Policy Optimization ([PPO](https://arxiv.org/pdf/1707.06347.pdf)) and Twin Delayed Deep Deterministic Policy Gradients ([TD3](https://arxiv.org/abs/1802.09477)). We will use DDPG for our base implementation, but *work in progress* of many of the remaining policies are also provided in this repo.  
 
 **DDPG**
 
@@ -37,13 +37,21 @@ DDPG was introduced by DeepMind in 2016 as an adaptation of Deep Q-Learning (DQN
 
 For the multi-agent implementation, we can [share experience amongst agents to accelerate learning](https://ai.googleblog.com/2016/10/how-robots-can-acquire-new-skills-from.html).  We do this by using the same memory ReplayBuffer for all agents.
 
+The base model in this repo utilizes the DDPG algorithm.  
+
 **D4PG**
 
+D4PG was introduced by DeepMind as a conference paper for the [International Conference on Learning Representations (ICLR) 2018](https://iclr.cc/archive/www/doku.php%3Fid=iclr2018:main.html).  This modifies the DDPG algorithm with the use of a distributional version of the critic update, as well as use of N-step returns and prioritized experience replay.   
+
+A work in progress version of this algorithm is also available in this repo.   
 
 **PPO**
 
+PPO was introduced by OpenAI in 2017 as an algorithm which alternates between "sampling data through interaction with the environment, and optimizing a 'surrogate' objective function using stochastic gradient ascent."
 
 **TD3**
+
+Published by McGill University and the University of Amsterdam for the [International Conference on Machine Learning (ICML) 2018](https://icml.cc/Conferences/2018), TD3 seeks to minimize the effects of overestimated value estimates from function approximation errors.  Building from DDPG, the algorithm takes the minimum value between a pair of critics to limit overestimation, and delays policy updates to reduce per-update error.  
 
 <a name="hyperparameters"></a>
 ## Hyperparameters
@@ -53,10 +61,6 @@ Hyperparameters are found in the same file as the implementation in which it is 
 **Buffer Size.**  The ReplayBuffer memory size, as in the number of experiences that are remembered.   
 
 **Batch Size.**  The size of each training batch sampled at a time.    
-
-**Alpha.**  Used in prioritized replay implementations as level of prioritization (alpha=0 is uniform).  
-
-**Beta.**  Used in prioritized replay implementations, importance-sampling weight to control the degree weights affect learning.   
 
 **Gamma.**  Discount factor for discounting past experiences (most recent experiences more highly rewarded as in less discount is applied).  
 
@@ -69,7 +73,11 @@ Hyperparameters are found in the same file as the implementation in which it is 
 <a name="network"></a>
 # Neural Network Architecture
 
-The underlying Actor Critic Network used in the implementation is a [x] layer network with the input and output layers mapping to the state and action sizes of 33 and 4 (per [Environment](#environment)), respectively.  There are [xxx].  
+The DDPG algorithm utilizes a pair of neural networks, for each the actor and critic.  Common to both are a three layer neural network, receiving the state size of 33 variables corresponding to position, rotation, velocity and angular velocities of the arm as input.  The two layers are made up of 400 and 300 nodes.  Adam is used as the optimizer, and ReLU is used as the per-layer activations.  
+
+The **actor network** uses a tanh output layer mapping to action size vector of 4 numbers, corresponding to torque applicable to two joints, where each number is between -1 and 1.  
+
+The **critic network** is batch normalized and outputs a single value.
 
 <a name="nextsteps"></a>
 # Next Steps
