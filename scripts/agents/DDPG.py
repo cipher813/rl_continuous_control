@@ -1,4 +1,9 @@
 """
+Project 2: Continuous Control
+Udacity Deep Reinforcement Learning Nanodegree
+Brian McMahon
+January 2019
+
 Code inspired by DDPG implmentation at
 https://github.com/partha746/DRLND_P2_Reacher_EnV
 """
@@ -14,8 +19,6 @@ import torch.nn.functional as F
 
 BUFFER_SIZE = int(1e6)  # replay buffer size
 BATCH_SIZE = 1024         # minibatch size
-# ALPHA = 1.0             # alpha, prioritization level (alpha=0 is uniform)
-# BETA = 1.0             # beta, importance-sampling weight to control how much weights affect learning
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 5e-4         # learning rate of the actor
@@ -128,7 +131,7 @@ class DDPG:
         actor_loss = -self.critic(states, actions_pred).mean()
         # Minimize the loss
         self.actor_optimizer.zero_grad()
-        # nn.utils.clip_grad_norm_(self.actor.parameters(),1)
+        nn.utils.clip_grad_norm_(self.actor.parameters(),1)
         actor_loss.backward()
         self.actor_optimizer.step()
 
@@ -147,15 +150,6 @@ class DDPG:
         """
         for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
             target_param.data.copy_(tau*local_param.data + (1.0-tau)*target_param.data)
-
-    # def save(self, filename, directory):
-    #     torch.save(self.actor.state_dict(), '%s/%s_actor.pth' % (directory, filename))
-    #     torch.save(self.critic.state_dict(), '%s/%s_critic.pth' % (directory, filename))
-    #
-    #
-    # def load(self, filename, directory):
-    #     self.actor.load_state_dict(torch.load('%s/%s_actor.pth' % (directory, filename)))
-    #     self.critic.load_state_dict(torch.load('%s/%s_critic.pth' % (directory, filename)))
 
 class OUNoise:
     """Ornstein-Uhlenbeck process."""
@@ -224,7 +218,7 @@ def hidden_init(layer):
 class Actor(nn.Module):
     """Actor (Policy) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1=400, fc2=300): #max_action,
+    def __init__(self, state_size, action_size, seed, fc1u=400, fc2u=300): #max_action,
         """Initialize parameters and build model.
         Params
         ======
@@ -236,13 +230,12 @@ class Actor(nn.Module):
         """
         super(Actor, self).__init__()
         self.seed = torch.manual_seed(seed)
-        self.fc1 = nn.Linear(state_size, fc1)
+        self.fc1 = nn.Linear(state_size, fc1u)
 
-        # self.bn1 = nn.BatchNorm1d(fc1_units) # removing for gym
+        self.bn1 = nn.BatchNorm1d(fc1u) # removing for gym
 
-        self.fc2 = nn.Linear(fc1,fc2)
-        self.fc3 = nn.Linear(fc2, action_size)
-        # self.max_action = max_action
+        self.fc2 = nn.Linear(fc1u,fc2u)
+        self.fc3 = nn.Linear(fc2u, action_size)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -252,15 +245,15 @@ class Actor(nn.Module):
 
     def forward(self, state):
         """Build an actor (policy) network that maps states -> actions."""
-        # x = F.relu(self.bn1(self.fc1(state)))
-        x = F.relu(self.fc1(state))
+        x = F.relu(self.bn1(self.fc1(state)))
+        # x = F.relu(self.fc1(state))
         x = F.relu(self.fc2(x))
         return F.tanh(self.fc3(x))
 
 class Critic(nn.Module):
     """Critic (Value) Model."""
 
-    def __init__(self, state_size, action_size, seed, fc1=400, fc2=300):
+    def __init__(self, state_size, action_size, seed, fc1u=400, fc2u=300):
         """Initialize parameters and build model.
         Params
         ======
@@ -272,12 +265,12 @@ class Critic(nn.Module):
         """
         super(Critic, self).__init__()
         self.seed = torch.manual_seed(seed)
-        self.fc1 = nn.Linear(state_size, fc1)
+        self.fc1 = nn.Linear(state_size, fc1u)
 
-        self.bn1 = nn.BatchNorm1d(fc1)
+        self.bn1 = nn.BatchNorm1d(fc1u)
 
-        self.fc2 = nn.Linear(fc1+action_size, fc2)
-        self.fc3 = nn.Linear(fc2, 1)
+        self.fc2 = nn.Linear(fc1u+action_size, fc2u)
+        self.fc3 = nn.Linear(fc2u, 1)
         self.reset_parameters()
 
     def reset_parameters(self):

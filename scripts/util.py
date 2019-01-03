@@ -1,3 +1,10 @@
+"""
+Project 2: Continuous Control
+Udacity Deep Reinforcement Learning Nanodegree
+Brian McMahon
+January 2019
+"""
+
 import os
 import re
 import gc
@@ -134,7 +141,7 @@ def train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_th
     """
     start = time.time()
     # RESULT_PATH = PATH + "results/"
-    # result_dict = {}
+    result_dict = {}
     # finished = False
     # i_episode = 0
     # while finished == False and i_episode < n_episodes:
@@ -145,11 +152,11 @@ def train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_th
     else:
         print("Platform must be either 'unity' or 'gym'.")
         # break
-    # end = time.time()
-    # result_dict[(env_name, policy_name)] = {
-    #                   "Scores": total_scores,
-    #                   "Runtime":calc_runtime(end-start)
-    #                   }
+    end = time.time()
+    result_dict[(env_name, policy_name)] = {
+                      "Scores": total_scores,
+                      "Runtime":calc_runtime(end-start)
+                      }
     # print(f"Updated Result Dictionary:\n{result_dict}")
     # pklpath = PATH + f"results/{timestamp}_{env_name}_ResultDict.pkl"
     # pickle_results(pklpath, result_dict)

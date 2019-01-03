@@ -90,13 +90,14 @@ The **critic network** is batch normalized and outputs a single value state poli
 <a name="nextsteps"></a>
 # Next Steps
 
+Ideally I would like to make this script functional with several algorithms and environments.  While work in progress implementations of algorithms and basic functionality for other environments are included in this repo, they all need to be finished and tested.  Only DDPG for Reacher20 works moderately well at this point.  
+
 Potential areas to explore in further work include:
 
 **Algorithm implementations**
 
-[xxx]
-
+Complete extension of this script to cover similar algorithms, such as D4PG, PPO, A2C and TD3.  
 
 **Environments**
 
-[xxx]
+Complete interchangeability of the script to run both Reacher1 and Reacher20, as well as environments from other platforms, such as OpenAI gym.  

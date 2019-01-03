@@ -1,4 +1,9 @@
 """
+Project 2: Continuous Control
+Udacity Deep Reinforcement Learning Nanodegree
+Brian McMahon
+January 2019
+
 BUG due to bug in built version of Unity, cannot load two unity environments in same loop
 https://github.com/Unity-Technologies/ml-agents/issues/1167
 This may be fixed in mlagents.envs but have not verified.
