@@ -9,9 +9,9 @@ https://github.com/Unity-Technologies/ml-agents/issues/1167
 This may be fixed in mlagents.envs but have not verified.
 """
 from agents.DDPG import DDPG
-from agents.D4PG import D4PG
+# from agents.D4PG import D4PG
 # from agents.DDPGplus import DDPGplus
-from agents.TD3 import TD3
+# from agents.TD3 import TD3
 from util import *
 
 PATH = "/Volumes/BC_Clutch/Dropbox/DeepRLND/rl_continuous_control/"

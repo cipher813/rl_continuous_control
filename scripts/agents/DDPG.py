@@ -131,7 +131,7 @@ class DDPG:
         actor_loss = -self.critic(states, actions_pred).mean()
         # Minimize the loss
         self.actor_optimizer.zero_grad()
-        nn.utils.clip_grad_norm_(self.actor.parameters(),1)
+        # nn.utils.clip_grad_norm_(self.actor.parameters(),1)
         actor_loss.backward()
         self.actor_optimizer.step()
 
@@ -232,7 +232,7 @@ class Actor(nn.Module):
         self.seed = torch.manual_seed(seed)
         self.fc1 = nn.Linear(state_size, fc1u)
 
-        self.bn1 = nn.BatchNorm1d(fc1u) # removing for gym
+        # self.bn1 = nn.BatchNorm1d(fc1u) # removing for gym
 
         self.fc2 = nn.Linear(fc1u,fc2u)
         self.fc3 = nn.Linear(fc2u, action_size)
@@ -245,8 +245,8 @@ class Actor(nn.Module):
 
     def forward(self, state):
         """Build an actor (policy) network that maps states -> actions."""
-        x = F.relu(self.bn1(self.fc1(state)))
-        # x = F.relu(self.fc1(state))
+        # x = F.relu(self.bn1(self.fc1(state)))
+        x = F.relu(self.fc1(state))
         x = F.relu(self.fc2(x))
         return F.tanh(self.fc3(x))
 
