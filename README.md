@@ -60,7 +60,7 @@ Execute this script to train in the environment(s) and agent(s) specified on thi
 Contains functions to train in Unity and OpenAI environments, and to chart results.
 
 [agents](https://github.com/cipher813/rl_continuous_control/tree/master/scripts) folder
-Contains agent classes as specified policies.  See [report.md](https://github.com/cipher813/rl_continuous_control/blob/master/report.md) for additional details on agent implementations.
+Contains agent classes as specified policies.  See the accompanying [Report](https://github.com/cipher813/rl_continuous_control/blob/master/report.md) for additional details on agent implementations.
 
 To train the agent, first open main.py in your favorite text editor (ie `nano main.py` or `vi main.py`).  Make sure the path to the root repo folder is correct and that the proper environments and agents (policies) are selected.  Then, in the command line run:
 
@@ -71,7 +71,7 @@ To train the agent, first open main.py in your favorite text editor (ie `nano ma
 
 [rl2_results.ipynb](https://github.com/cipher813/rl_continuous_control/tree/master/notebooks)
 
-Charts the results from specified results dictionary pickle file.  
+Charts the results from model results file.  
 
 ### Results
 
