@@ -29,7 +29,9 @@ For further information, see Udacity's [project github repo](https://github.com/
 <a name="algorithm"></a>
 ## The Algorithm
 
-In this project, we explored a variety of policies to solve this continuous state space environment, including Deep Deterministic Policy Gradient ([DDPG](https://arxiv.org/abs/1509.02971)), Distributed Distributional Deep Deterministic Policy Gradient ([D4PG](https://arxiv.org/pdf/1804.08617.pdf)), Poximal Policy Optimization ([PPO](https://arxiv.org/pdf/1707.06347.pdf)) and Twin Delayed Deep Deterministic Policy Gradients ([TD3](https://arxiv.org/abs/1802.09477)). We will use DDPG for our base implementation, but *work in progress* of many of the remaining policies are also provided in this repo.  
+In this project, we explored a variety of policies to solve this continuous state space environment, including Deep Deterministic Policy Gradient ([DDPG](https://arxiv.org/abs/1509.02971)), Distributed Distributional Deep Deterministic Policy Gradient ([D4PG](https://arxiv.org/pdf/1804.08617.pdf)), Poximal Policy Optimization ([PPO](https://arxiv.org/pdf/1707.06347.pdf)) and Twin Delayed Deep Deterministic Policy Gradients ([TD3](https://arxiv.org/abs/1802.09477)). We will use DDPG for our base implementation, but *work in progress* versions of many of the remaining policies are also provided in this repo.  
+
+This DDPG algorithm successfully trained in 295 episodes as determined by a running average of the scores of previous 100 episodes over 30.0.  
 
 ![alt text](https://github.com/cipher813/rl_continuous_control/blob/master/charts/201901030755_plotresults.png "Reacher20 Results with DDPG")
 
@@ -98,7 +100,7 @@ Potential areas to explore in further work include:
 
 **Algorithm implementations**
 
-Complete extension of this script to cover similar algorithms, such as D4PG, PPO, A2C and TD3.  
+Complete extension of this script to cover similar, and potentially more stable and better-performing, algorithms, such as D4PG, PPO, A2C and TD3.  
 
 **Environments**
 

@@ -23,6 +23,7 @@ def pickle_results(pklpath,pkl_file):
     print(f"Scores pickled at {pklpath}")
 
 def calc_runtime(seconds):
+    """ Calculates runtime """
     h = int(seconds//(60*60))
     seconds = seconds - h*60*60
     m = int(seconds//60)
@@ -30,6 +31,7 @@ def calc_runtime(seconds):
     return "{:02d}:{:02d}:{:02d}".format(h,m,s)
 
 def train_unity_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp, start, n_episodes, max_t, num_agents):
+    """ Trains unity environments with DDPG policy """
     total_scores = []
     from unityagents import UnityEnvironment
     env_path = PATH + f"data/{env_path}"
@@ -83,6 +85,7 @@ def train_unity_ddpg(PATH, env_name, platform, env_path, policy, score_threshold
     return total_scores
 
 def train_gym_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t,num_agents):
+    """ Trains gym environments with DDPG policy """
     total_scores = []
     import gym
     env = gym.make(env_path)
@@ -123,16 +126,22 @@ def train_gym_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,t
 
 def train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_threshold,
                  timestamp,train_mode,start, n_episodes=10000, max_t=1000, num_agents=1):
-    """Run policy train.
+    """Train environment with DDPG policy.
 
-    Arguments:
+    Params
+    ======
     env_name (str): name of environment (ie for gym or unity)
-    agent_dict (dict): agents to train
+    platform (str): platform of environment, such as gym or unity
+    env_path (str): path to environment (such as Reacher's unity data folder)
+    policy_name (str): name of policy, such as DDPG
+    policy (obj): policy object
+    score_threshold (float): average score which must be attained to complete environment objective
+    timestamp (str): Unique timestamp string of integers for specific train file
+    train_mode (str): single or multi, which specifies whether environment is single or multi agent
+    start (float): start time of running script
     n_episodes (int): max number of episodes to train
     max_t (int): max timesteps per episode
-    learn_every (int): update network timestep increment
-    num_learn (int): number of times to update network per every timestep increment (ie learn_every)
-    score_threshold (float): once training reaches this average, break train
+    num_agents (int): number of agents in environment (default 1)
     """
     if platform=="unity":
         total_scores = train_unity_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t, num_agents)
@@ -143,6 +152,15 @@ def train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_th
     return total_scores
 
 def train_envs(PATH, env_dict, agent_dict, train_mode):
+    """Train in loop of all environments and agents (policies) specified.
+
+    Params
+    ======
+    PATH (str): path to root project repo
+    env_dict (dict): dictionary of environments to train
+    agent_dict (dict): dictionary of agents (policies) to train
+    train_mode (str): single or multi, which specifies whether environment is single or multi agent
+    """
     timestamp = re.sub(r"\D","",str(datetime.datetime.now()))[:12]
     result_dict = {}
     for k,v in env_dict.items():
