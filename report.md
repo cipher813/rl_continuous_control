@@ -31,6 +31,8 @@ For further information, see Udacity's [project github repo](https://github.com/
 
 In this project, we explored a variety of policies to solve this continuous state space environment, including Deep Deterministic Policy Gradient ([DDPG](https://arxiv.org/abs/1509.02971)), Distributed Distributional Deep Deterministic Policy Gradient ([D4PG](https://arxiv.org/pdf/1804.08617.pdf)), Poximal Policy Optimization ([PPO](https://arxiv.org/pdf/1707.06347.pdf)) and Twin Delayed Deep Deterministic Policy Gradients ([TD3](https://arxiv.org/abs/1802.09477)). We will use DDPG for our base implementation, but *work in progress* of many of the remaining policies are also provided in this repo.  
 
+![alt text](https://github.com/cipher813/rl_continuous_control/blob/master/charts/201901030755_plotresults.png "Reacher20 Results with DDPG")
+
 **DDPG**
 
 DDPG was introduced by DeepMind in 2016 as an adaptation of Deep Q-Learning (DQN) to the continuous action domain.  The algorithm is described as an "actor-critic, model-free algorithm based on the deterministic policy gradient that can operate over continuous action spaces."  While DQN solves problems with high-dimensional observation (state) spaces, it can only handle discrete, low-dimensional action spaces.  

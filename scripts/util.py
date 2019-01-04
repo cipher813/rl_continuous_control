@@ -4,7 +4,6 @@ Udacity Deep Reinforcement Learning Nanodegree
 Brian McMahon
 January 2019
 """
-
 import os
 import re
 import gc
@@ -30,7 +29,7 @@ def calc_runtime(seconds):
     s = int(round(seconds - m*60,0))
     return "{:02d}:{:02d}:{:02d}".format(h,m,s)
 
-def train_unity_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t, num_agents):
+def train_unity_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp, start, n_episodes, max_t, num_agents):
     total_scores = []
     from unityagents import UnityEnvironment
     env_path = PATH + f"data/{env_path}"
@@ -80,11 +79,7 @@ def train_unity_ddpg(PATH, env_name, platform, env_path, policy, score_threshold
         if total_average_score>score_threshold:
             print(f"Solved in {i_episode} and {calc_runtime(end-start)}")
             break
-    # env.reset()
     env.close()
-    # seconds = 30
-    # print(f"Sleeping for {seconds} seconds to close the damn unity environment...")
-    # time.sleep(seconds)
     return total_scores
 
 def train_gym_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t,num_agents):
@@ -127,7 +122,7 @@ def train_gym_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,t
     return total_scores
 
 def train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_threshold,
-                 timestamp,train_mode,n_episodes=10000, max_t=1000, num_agents=1):
+                 timestamp,train_mode,start, n_episodes=10000, max_t=1000, num_agents=1):
     """Run policy train.
 
     Arguments:
@@ -139,30 +134,13 @@ def train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_th
     num_learn (int): number of times to update network per every timestep increment (ie learn_every)
     score_threshold (float): once training reaches this average, break train
     """
-    start = time.time()
-    # RESULT_PATH = PATH + "results/"
-    result_dict = {}
-    # finished = False
-    # i_episode = 0
-    # while finished == False and i_episode < n_episodes:
     if platform=="unity":
         total_scores = train_unity_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t, num_agents)
     elif platform=="gym":
         total_scores = train_gym_ddpg(PATH, env_name, platform, env_path, policy, score_threshold,timestamp,start, n_episodes, max_t, num_agents)
     else:
         print("Platform must be either 'unity' or 'gym'.")
-        # break
-    end = time.time()
-    result_dict[(env_name, policy_name)] = {
-                      "Scores": total_scores,
-                      "Runtime":calc_runtime(end-start)
-                      }
-    # print(f"Updated Result Dictionary:\n{result_dict}")
-    # pklpath = PATH + f"results/{timestamp}_{env_name}_ResultDict.pkl"
-    # pickle_results(pklpath, result_dict)
-    # # result_dict[(env_name,agent_name)] = scores
-    # gc.collect()
-    return result_dict
+    return total_scores
 
 def train_envs(PATH, env_dict, agent_dict, train_mode):
     timestamp = re.sub(r"\D","",str(datetime.datetime.now()))[:12]
@@ -182,7 +160,7 @@ def train_envs(PATH, env_dict, agent_dict, train_mode):
                 mode = v[1] # single, multi or both
                 if mode==train_mode or mode=="both":
                     if "DDPG" in policy_name or "D4PG" in policy_name:
-                        total_scores = train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_threshold, timestamp,train_mode)
+                        total_scores = train_ddpg(PATH, env_name, platform, env_path, policy_name, policy, score_threshold, timestamp,train_mode, start)
                     end = time.time()
                     result_dict[(env_name, policy_name)] = {
                                       "Scores": total_scores,
