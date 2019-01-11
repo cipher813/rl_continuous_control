@@ -14,8 +14,8 @@ from agents.DDPG import DDPG
 # from agents.TD3 import TD3
 from util import *
 
-PATH = "/Volumes/BC_Clutch/Dropbox/DeepRLND/rl_continuous_control/"
-# PATH = "/home/cipher813/rl_continuous_control/"
+# PATH = "/Volumes/BC_Clutch/Dropbox/DeepRLND/rl_continuous_control/"
+PATH = "/home/cipher813/rl_continuous_control/"
 # PATH = "/home/bcm822_gmail_com/rl_continuous_control/"
 RESULT_PATH = PATH + "results/"
 
@@ -24,7 +24,9 @@ RESULT_PATH = PATH + "results/"
 TRAIN_MODE = "multi"
 
 env_dict = {
-            "Reacher20":["unity","Reacher20.app","multi",0.0], # 30.0
+            # "Crawler":["unity","Crawler.app","multi",400.0], #400 dynamic, 2000 static
+            "Crawler":["unity","Crawler_Linux_NoVis/Crawler.x86_64","multi",400.0], #400 dynamic, 2000 static
+            # "Reacher20":["unity","Reacher20.app","multi",0.0], # 30.0
             # "Reacher20":["unity","Reacher_Linux_NoVis2/Reacher.x86_64","multi",30.0],
             "Reacher1":["unity","Reacher1.app","single",30.0], # 30.0
             # "Reacher1":["unity","Reacher_Linux_NoVis1/Reacher.x86_64","single",30.0],
